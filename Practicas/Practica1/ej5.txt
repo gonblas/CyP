@@ -1,0 +1,36 @@
+int alumnos = 0;
+bool continuar = false;
+QueueExamenes entregados;
+HashTable notas;
+
+
+
+Process Profesor [i=0..2]
+{
+	<await (alumnos == P)>
+	continuar = True
+	
+	int id_act = -1
+	
+	while(alumnos > 0) {
+		<await(not empty(entregados or alumnos == 0));
+		if(alumnos == 0) break;
+		else id_act, examen = pop(entregados); alumnos = alumnos - 1>
+		
+		//Corregir el examen...
+		int nota = ...;
+		<add(notas, id_act, nota);>
+	}
+}
+
+
+Process Alumno [id=0..P-1]
+{
+	<alumnos = alumnos + 1>
+	<await (continuar)>
+	Examen examen = ...;
+	// Resolver el examen...
+	<push(entregados, id, examen)>
+	<await(id in notas);
+	int nota = get(notas(id))>
+}

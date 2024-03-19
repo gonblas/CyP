@@ -1,0 +1,97 @@
+(a)
+
+Impresora impresora; // Operaciones: Imprimir(documento)
+bool busy = False;
+
+Process Persona[id:0..N-1]
+{
+	Doc documento = ...;
+	await<(busy == False); busy=True>;
+	Imprimir(documento)
+	busy=False
+}
+
+
+
+
+(b)
+
+Impresora impresora; // Operaciones: Imprimir(documento)
+int siguiente=-1;
+Queue cola;
+
+Process Persona[id:0..N-1]
+{
+	Doc documento = ...;
+	<if(siguiente == -1) siguiente = id
+	else push(cola, id)>;
+	<await (siguiente == id)>;
+	Imprimir(documento)
+	<if (empty(cola)) siguiente = -1
+	else siguiente = pop(cola)>;
+}
+
+
+
+
+(c)
+
+Impresora impresora; // Operaciones: Imprimir(documento)
+int siguiente=-1;
+Queue cola;
+
+Process Persona[id:0..N-1]
+{
+	Doc documento = ...;
+	edad = ...;
+	<if(siguiente==-1) siguiente=id
+	else encolar(cola, edad, id)>;
+	<await (siguiente==id)>;
+	Imprimir(documento)
+	<if (empty(cola)) siguiente = -1
+	else siguiente = sacar(cola)>;
+}
+
+
+
+
+(d)
+
+Impresora impresora; // Operaciones: Imprimir(documento)
+int utilizo = -1;
+
+
+Process Persona[id:0..N-1]
+{
+	Doc documento = ...;
+	await<(utilizo = id-1)>;
+	Imprimir(documento)
+	utilizo = utilizo + 1;
+}
+
+
+
+
+(e)
+
+Impresora impresora; // Operaciones: Imprimir(documento)
+int siguiente=-1;
+bool ok = False;
+Queue cola;
+
+Process Coordinador[] 
+{
+	<if (empty(cola)) siguiente = -1
+	else siguiente = sacar(cola)>;
+	<await (ok)>; ok = false;
+}
+
+Process Persona[id:0..N-1]
+{
+	Doc documento = ...;
+	edad = ...;
+	<encolar(cola, edad, id)>;
+	<await (siguiente==id)>;
+	Imprimir(documento);
+	ok = true;
+}

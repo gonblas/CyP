@@ -1,0 +1,9 @@
+int Total = 0;
+Array array;
+int N = ...;
+
+Process Counter [i: 0..M-1]
+{
+	If(array[i] == N)
+		<Total = Total + 1>
+}

@@ -1,0 +1,8 @@
+Queue cola; //  Tiene operaciones push(), pop() y empty()
+
+Process Getter[]
+{
+	await<(not empty(cola); recurso=pop(cola)>;
+	// Utiliza el recurso
+	<push(cola, recurso)>
+}

@@ -1,0 +1,8 @@
+Verifiquemos si cumple las condiciones una a una:
+
+- Exclusion mutua: Dada que el turno (variable compartida) puede tomar o el valor 1 o 2, y eso permitira que solo un proceso este ejecutando su SC.
+- Ausencia de deadlock: Como el turno esta seteado en 1 en un comienzo, uno de los procesos (SC1) ejecutara su seccion critica y luego el segundo lo hara.
+- Ausencia de demora innecesaria: Esta condicion no la cumple, necesariamente el proceso SC2 requiere que SC1 realice antes la SC para el poder hacerla, y si el proceso SC1 se bloquea en alguna zona, entonces el proceso SC2 no podra ejecutar su SC por mas que sea el unico intentando acceder efectivamente.
+- Eventual Entrada: En este caso si se cumple, cuando SC1 llegue a su SC, luego SC2 lo hara debido al cambio de valor de la variable compartida *turno, y SC2 no podra volver a ganarle para entrar a la SC, lo cual asegura que ambos ejecuten la SC.
+
+Dado el analisis realizado, solo cumple 3 de las 4 condiciones.

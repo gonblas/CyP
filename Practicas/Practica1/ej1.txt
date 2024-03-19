@@ -1,0 +1,45 @@
+Descompongo los programas en acciones atomicas de grano fino:
+
+
+P1::
+
+1- Load Pos Memoria x, Reg Acumulador
+2- Cmp Acumulador, 0
+3- y:=4*2
+4- Store Reg Acumulador, Pos Memoria y
+5- Add 2, Reg Acumulador
+6- Store Reg Acumulador, Pos Memoria x
+
+
+P2::
+
+7- Load Pos Memoria x, Reg Acumulador
+8- Cmp Acumulador, 0
+9- Load Pos Memoria x, Reg Acumulador
+10- Add 1, Reg Acumulador
+11- Store Reg Acumulador, Pos Memoria x
+
+
+P3::
+
+12- Load Pos Memoria x, Reg Acumulador1
+13- Mult 3, Reg Acumulador1
+14- Load Pos Memoria x, Reg Acumulador2
+15- Mult 2, Reg Acumulador2
+16- Add 1, Reg Acumulador2
+17- Add Reg Acumulador2, Reg Acumulador1
+18- Store Reg Acumulador1, Pos Memoria x
+
+
+
+Algunas historias del programa:
+
+* 1-2-3-4-5-6-7-8-9-10-11-12-13-14-15-16-17-18: 56.
+* 7-8-9-10-11-1-2-3-4-5-6-12-13-14-15-16-17-18: 51.
+* 12-13-14-15-16-17-18-1-2-3-4-5-6-7-8-9-10-11: 11.
+* 12-13-14-15-16-17-18-7-8-9-10-11-1-2-3-4-5-6: 10.
+* 12-13-1-2-3-4-5-6-14-15-16-17-18-7-8-9-10-11: 22.
+* 12-13-1-2-3-4-5-6-7-8-9-10-11-14-15-16-17-18: 23.
+
+
+Por lo tanto, pueden darse las tres opciones dadas.
