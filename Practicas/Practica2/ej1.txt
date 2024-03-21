@@ -1,0 +1,24 @@
+Un sistema operativo mantiene 5 instancias de un recurso almacenadas en una cola, cuando
+un proceso necesita usar una instancia del recurso la saca de la cola, la usa y cuando termina
+de usarla la vuelve a depositar. 
+
+
+Queue Q;
+sem mutex = 1;
+sem recursos = 5;
+
+Process proceso[id: 0..N-1]
+{   
+    Rec recurso;
+    while(true){
+        P(recursos);
+        P(mutex);
+        recurso = pop(Q); 
+        V(mutex);
+        -- Se utiliza el recurso (supongo que pueden usarlo varios procesos simultaneamente).
+        P(mutex)
+        push(Q, recurso);
+        V(recursos);
+        V(mutex);
+    }
+}

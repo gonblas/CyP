@@ -1,0 +1,30 @@
+A una cerealera van T camiones a descargarse trigo y M camiones a descargar maíz. Sólo hay
+lugar para que 7 camiones a la vez descarguen pero no pueden ser más de 5 del mismo tipo
+de cereal. Nota: sólo se pueden usar procesos que representen a los camiones.
+
+
+sem vacio = 7, lleno = 0, camionT = 5, camionM = 5;
+
+
+Process CamionTrigo[id:0..T-1]
+{
+    P(camionT); --Si hay menos de 5 tipos de mi camion
+    P(vacio);   --Si hay un lugar libre
+    --Deposito el trigo en el lugar disponible
+    V(lleno);
+    V(camionT);
+}
+
+
+Process CamionMaiz[id:0..M-1]
+{
+    P(camionM); --Si hay menos de 5 tipos de mi camion
+    P(vacio);   --Si hay un lugar libre
+    --Deposito el maiz en el lugar disponible
+    V(lleno);
+    V(camionM);
+}
+
+--Quizas lo que se quiera es que se trabaje con buffers pero como no los menciona quizas es solo un 
+--problema de dincroonizacion.
+

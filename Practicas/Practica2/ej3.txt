@@ -1,0 +1,62 @@
+Tarea tareas[40];
+Queue corregidas, entregados;
+sem mutex = 1, correcciones = 0, espera[40] = ([40] 0);
+bool correcto[40] = ([40] false);
+
+
+Process Maestra[]
+{
+    for i = 0..39 {
+        tareas[i] = tarea_rand();
+        V(espera[i]);
+    }
+
+    int terminados = 0;
+
+    
+    while(terminados < 40){
+        P(correcciones);
+        P(mutex);
+        examen, id_alumno = pop(entregados);
+        V(mutex);
+        --Correge examen
+        if(aprobado(examen)){
+            correcto[id_alumno] = true;
+            terminados = terminados + 1;
+        }
+        else {
+            tareas[id_alumno] = examen;
+        }
+        V(espera[id_alumno]);
+    }
+
+}
+
+
+Process Alumno[id:0..39]
+{
+    P(espera[id]);
+    miTarea = tareas[id];
+    --Hace la tarea
+
+    P(mutex);
+    push(entregados, miTarea, id);
+    V(mutex);
+    V(correcciones);
+
+    P(espera[id]);
+    while(not correcto[id]){    
+        miExamen = tareas[id];
+        --Corregir examen
+        P(mutex);
+        push(entregados, miExamen, id);
+        V(mutex);
+        V(correcciones);
+        P(espera[id]);
+    }
+}
+
+
+
+
+

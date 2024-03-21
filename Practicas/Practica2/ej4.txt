@@ -1,0 +1,40 @@
+Existen N personas que deben fotocopiar un documento cada una. Resolver cada ítem
+usando semáforos:
+a) Implemente una solución suponiendo que existe una única fotocopiadora compartida
+por todas las personas, y las mismas la deben usar de a una persona a la vez, sin importar
+el orden. Existe una función Fotocopiar() llamada por la persona que simula el uso de la
+fotocopiadora. Sólo se deben usar los procesos que representan a las Personas
+
+
+sem mutex = 1;
+
+Process Persona[id:0..N-1]
+{
+    P(mutex);
+    Fotocopiar();
+    V(mutex);
+}
+
+
+b) Modifique la solución de (a) para el caso en que se deba respetar el orden de llegada.
+
+-- Usando Passing the condition
+
+sem mutex = 1, espera[N] = ([N] 0);
+bool libre = true;
+Queue Q;
+
+
+Process Persona[id:0..N-1]
+{
+    int id_despertar;
+    P(mutex);
+    if(libre) {libre = false; V(mutex);}
+    else {push(Q, id); V(mutex); P(espera[id])}
+    Fotocopiar();
+    P(mutex);
+    if(empty(Q)) {libre = true}
+    else {pop(Q, id_despertar); V(espera[id_despertar])}
+    V(mutex);
+}
+

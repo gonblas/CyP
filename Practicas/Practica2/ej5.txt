@@ -1,0 +1,59 @@
+Se debe simular una maratón con C corredores donde en la llegada hay UNA máquinas
+expendedoras de agua con capacidad para 20 botellas. Además existe un repositor encargado
+de reponer las botellas de la máquina. Cuando los C corredores han llegado al inicio comienza
+la carrera. Cuando un corredor termina la carrera se dirigen a la máquina expendedora, espera
+su turno (respetando el orden de llegada), saca una botella y se retira. Si encuentra la máquina
+sin botellas, le avisa al repositor para que cargue nuevamente la máquina con 20 botellas; espera
+a que se haga la recarga; saca una botella y se retira. Nota: maximizar la concurrencia; mientras
+se reponen las botellas se debe permitir que otros corredores se encolen.
+
+
+sem barrera = 0, mutex = 1, maquina = 1, mutexQ = 1, espera[40] = ([40] 0), mutexRepo = 0;
+int contador = 0, botellas = 20,  corredor_actual = -1;
+bool libre = true;
+Queue fila;
+Process Corredor[id:0..C-1]
+{
+    P(mutex);
+    contador = contador + 1;
+    if(contador == C){
+        for i = 1..C -> V(barrera);
+    }
+    V(mutex);
+    P(barrera);
+
+    --Corre la carrera y finaliza
+
+    P(maquina);
+
+    if(libre) {libre = false; V(maquina)}
+    else {push(fila, id); V(maquina); P(espera[id])}
+
+    if(botellas == 0){
+        corredor_actual = id;
+        V(MutexRepo);
+        P(espera[id]);
+    }
+
+    contador = contador - 1;
+    botellas = botellas - 1;
+
+    if(contador == 0){ V(MutexRepo)};
+
+    P(maquina);
+    if(empty(fila)) {libre = true}
+    else {id_sig = pop(fila, id_sig); V(espera[id_sig])}
+    V(maquina);
+}
+
+
+
+Process Repositor[id:0..C-1]
+{
+    P(MutexRepo);
+    while(contador > 0){
+        botellas = 20;
+        V(espera[corredor_actual]);
+        P(MutexRepo);
+    }
+}
