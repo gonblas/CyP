@@ -1,0 +1,70 @@
+6. Una empresa de turismo posee 4 combis con capacidad para 25 personas cada una y UN
+vendedor que vende los pasajes a los clientes de acuerdo al orden de llegada. Hay C clientes
+que al llegar intentan comprar un pasaje para una combi en particular (el cliente conoce este
+dato); si aún hay lugar en la combi seleccionada se le da el pasaje y se dirige hacia la combi;
+en caso contrario se retira. Cada combi espera a que suban los 25 pasajeros, luego realiza el
+viaje, y cuando llega al destino deja bajar a todos los pasajeros. Nota: maximizar la
+concurrencia; suponga que para cada combi al menos 25 clientes intentarán comprar pasaje.
+
+
+sem mutexPasajes[4] = ([4] 1),  mutexSubidos[4] = ([4] 0), mutexLlegada = ([4] 0), mutexCliente = 0, mutexFila = 1, clientes[C] = ([C] 0), mutexOk = 1;
+Queue fila;
+bool ok = true;
+
+
+Process Combi[id: 0..3]
+{
+    for i in 0..24 -> P(mutexSubidos[id]);
+    --Realiza el viaje
+    for i in 0..24 -> V(mutexLlegada[id]);
+}
+
+
+
+
+Process Cliente[id:0..C-1]
+{
+    int nro_combi = ...;
+    P(mutexFila);
+    pop(fila, nro_combi, id);
+    V(mutexFila);
+
+    V(mutexCliente);
+
+    P(clientes[id]);
+    P(mutexOk);
+    if(ok){
+        --Va hacia la combi
+        V(mutexOk);
+        V(mutexSubidos[nr_combi]);
+        P(mutexLlegada[nro_combi]);
+    }
+    else{
+        V(mutexOk);
+    }
+
+
+}
+
+
+Process Vendedor
+{
+    int pasajes[4] = ([4] 0), total = 0;
+    while(total < 100){
+        P(mutexCliente);
+
+        P(mutexFila);
+        nro_combi, id = pop(fila);
+        V(mutexFila);
+
+        P(mutexOk);
+        ok = false;
+        V(mutexOk);
+        if(pasajes[nro_combi] < 25){
+            ok = true;
+            pasajeros[nro_combi]++;
+            total++;
+        }
+        V(clientes[id]);
+    }
+}

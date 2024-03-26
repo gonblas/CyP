@@ -1,10 +1,4 @@
-Existen N personas que deben fotocopiar un documento cada una. Resolver cada ítem
-usando semáforos:
-a) Implemente una solución suponiendo que existe una única fotocopiadora compartida
-por todas las personas, y las mismas la deben usar de a una persona a la vez, sin importar
-el orden. Existe una función Fotocopiar() llamada por la persona que simula el uso de la
-fotocopiadora. Sólo se deben usar los procesos que representan a las Personas
-
+a)
 
 sem mutex = 1;
 
@@ -16,7 +10,9 @@ Process Persona[id:0..N-1]
 }
 
 
-b) Modifique la solución de (a) para el caso en que se deba respetar el orden de llegada.
+
+
+b) 
 
 -- Usando Passing the condition
 
@@ -38,3 +34,123 @@ Process Persona[id:0..N-1]
     V(mutex);
 }
 
+
+
+
+c) 
+
+-- Usando Passing the condition
+
+sem mutex = 1, espera[N] = ([N] 0);
+bool libre = true;
+Queue Q;
+
+
+Process Persona[id:0..N-1]
+{
+    int id_despertar, edad = ...;
+    P(mutex);
+    if(libre) {libre = false; V(mutex);}
+    else {push(Q, id); V(mutex); P(espera[id, edad])}
+    Fotocopiar();
+    P(mutex);
+    if(empty(Q)) {libre = true}
+    else {pop(Q, id_despertar, edad); V(espera[id_despertar])}
+    V(mutex);
+}
+
+
+
+
+d) 
+
+sem espera[N] = ([1] 1 ...[N-1] 0); --El primero en 1, el resto en 0.
+
+Process Persona[id:0..N-1]
+{
+    P(espera[id]);
+    Fotocopiar();
+    V(espera[id++]);
+}
+
+
+
+
+e) 
+
+sem mutex = 1, espera[N] = ([N] 0), solicitudes = 0, listo = 0;
+Queue Q;
+
+
+Process Persona[id:0..N-1]
+{
+    P(mutex);
+    push(Q, id);
+    V(mutex);
+    V(solicitudes);
+    P(espera[id]);
+    Fotocopiar();
+    V(listo);
+}
+
+
+Process Empleado
+{
+    int atendidos = 0;
+
+    while(atendidos < N){
+        P(solicitudes);
+        P(mutex);
+        id = pop(Q, id);
+        V(mutex);
+        V(espera[id]);
+        P(listo);
+        atendidos++;
+    }
+}
+
+
+
+
+f) 
+
+--Supongo que Fotocopiar(n) indíca que fotocopiará en la fotocopiadora numero n, y no entra en conflicto con otro proceso que hace simultaneamente Fotocopiar(m) con n != m.
+
+sem mutexFila = 1, mutexLibres = 1, disponibles = 10, espera[N] = ([N] 0), solicitudes = 0;
+Queue Q, libres;
+int asignada[N] = ([N] -1);
+
+Process Persona[id:0..N-1]
+{
+    P(mutexFila);
+    push(Q, id);
+    V(mutexFila);
+    V(solicitudes);
+    P(espera[id]);
+    int n = asignada[id];
+    Fotocopiar(n);
+    P(mutexLibres);
+    push(libres, n);
+    V(mutexLibres);
+    V(disponibles);
+}
+
+
+Process Empleado
+{
+    int atendidos = 0;
+
+    while(atendidos < N){
+        P(solicitudes);
+        P(mutexFila);
+        id = pop(Q, id);
+        V(mutexFila);
+
+        P(disponibles);
+        P(mutexLibres);
+        fotocopiadora[id] = pop(libres);
+        V(mutexLibres);
+        V(espera[id]);
+        atendidos++;
+    }
+}

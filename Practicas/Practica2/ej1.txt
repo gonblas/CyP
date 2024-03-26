@@ -1,8 +1,3 @@
-Un sistema operativo mantiene 5 instancias de un recurso almacenadas en una cola, cuando
-un proceso necesita usar una instancia del recurso la saca de la cola, la usa y cuando termina
-de usarla la vuelve a depositar. 
-
-
 Queue Q;
 sem mutex = 1;
 sem recursos = 5;
