@@ -34,7 +34,6 @@ Monitor Carrera {
         else {wait(cvCorredores);}
     }
 
-
     Procedure Terminar() {
         if(not libre) {esperando++; wait(cvFila);}
         else {libre = false;}
@@ -45,7 +44,7 @@ Monitor Carrera {
     }
 
     Procedure Reponer() {
-        wait(cvRepositor);
+        if(botellas > 0) {wait(cvRepositor);}
         botellas = 20;
         signal(cvBotella);
     }
