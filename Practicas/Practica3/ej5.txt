@@ -1,0 +1,65 @@
+5. Suponga una comisión con 50 alumnos. Cuando los alumnos llegan forman una fila, una
+vez que están los 50 en la fila el jefe de trabajos prácticos les entrega el número de grupo
+(número aleatorio del 1 al 25) de tal manera que dos alumnos tendrán el mismo número de
+grupo (suponga que el jefe posee una función DarNumero() que devuelve en forma aleatoria
+un número del 1 al 25, el jefe de trabajos prácticos no guarda el número que le asigna a
+cada alumno). Cuando un alumno ha recibido su número de grupo comienza a realizar la
+práctica. Al terminar de trabajar, el alumno le avisa al jefe de trabajos prácticos y espera la
+nota. El jefe de trabajos prácticos, cuando han llegado los dos alumnos de un grupo les
+devuelve a ambos la nota del GRUPO (el primer grupo en terminar tendrá como nota 25, el
+segundo 24, y así sucesivamente hasta el último que tendrá nota 1).
+
+
+
+Process Alumno[id:0..49]
+{
+    int grupo;
+    real nota;
+    Admin.Llegada(id, grupo);
+    --Realizar practica
+    Admin.Termine(grupo, nota);
+}
+
+
+
+Process JTP
+{
+    Admin.EntregarNumeros();
+    for i=1..24 -> Admin.EntregarNota();
+}
+
+
+
+Monitor Admin {
+    int alumnos = 0, asignados[50], grupos[25] = ([25] 0), notas[25], nota_act = 25, terminaron = 0;
+    Cola terminados;
+    Cond fila, cvProfesor, cvGrupos[25];
+
+    Procedure Llegada(id: in int; nro_grupo: out int) {
+        alumnos++;
+        if(alumnos == 50) {signal(cvProfesor);}
+        wait(fila);
+        nro_grupo = asignados[id];
+    }
+
+    Procedure EntregarNumeros() {
+        if(alumnos < 50) {wait(cvProfesor);}
+        for i=0..49 -> asignados[i] = DarNumero();
+        signal_all(fila);
+    }
+
+    Procedure Termine(nro_grupo: in int; nota: out real) {
+        grupos[nro_grupo]++;
+        if(grupos[nro_grupo] == 2) {terminaron++; push(terminados, nro_grupo); signal(cvProfesor);}
+        wait(cvGrupos[nro_grupo]);
+        nota = notas[nro_grupo];
+    }
+    
+    Procedure EntregarNota() {
+        if(terminaron == 0) {wait(cvProfesor);}
+        pop(terminados, grupo_act);
+        notas[grupo_act] = nota_act;
+        nota_act--;
+        signal_all(cvGrupos, grupo_act);
+    }
+}

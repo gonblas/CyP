@@ -1,0 +1,43 @@
+1. Implementar el acceso a una base de datos de solo lectura que puede atender a lo sumo 5
+consultas simultáneas.
+
+
+Process Lector[id:0..N-1]
+{
+    Dato D; text consulta;
+    Base_De_Datos.Query(consulta, id, D);
+    --Utilizar datos leidos
+}
+
+
+Process Gestor[id:0..4] {
+    while(true) {
+        Base_De_Datos.Leer_Consulta(consulta);
+        -- Hace algo con la consulta y guarda en dato
+        Base_De_Datos.Responder_Consulta(dato, id);
+    }
+}
+
+
+Monitor Base_De_Datos {
+    Cola querys;
+    Cond cvGestor, cvEspera[N];
+    Dato recursos[N];
+
+    Procedure Consulta(consulta: in text; mi_id: in int; D: out Dato) {
+        push(querys, (consulta, mi_id));
+        signal(cvGestor);
+        wait(cvEspera[mi_id]);
+        D = recursos[mi_id];
+    }
+
+    Procedure Leer_Consulta(consulta: out text; id: out int) {
+        while(empty(querys)) {wait(cvGestor);}
+        pop(querys, consulta, id);
+    }
+
+    Procedure Responder_Consulta(dato: in Dato; id: in int) {
+        recursos[id] = dato;
+        signal(cvEspera[id]);
+    }
+}

@@ -1,0 +1,50 @@
+3. En un corralón de materiales hay un empleado que debe atender a N clientes de acuerdo al
+orden de llegada. Cuando un cliente es llamado por el empleado para ser atendido, le da una
+lista con los productos que comprará, y espera a que el empleado le entregue el
+comprobante de la compra realizada.
+
+
+-- Supongo que el empleado va dejando los comprobantes y no tiene que esperar que los clientes lo tomen para seguir atendiendo.
+
+Process Clientes[id:0..N-1]
+{
+    Lista lista = ...;
+    Comprobante comp;
+    Admin.Atencion(id, lista, comp);
+}
+
+
+Process Empleado
+{   
+    int id_act; 
+    while(true){
+        Admin.Siguiente(id_act, lista);
+        comprobante = DarComprobante(lista); --Supongo que DarComprobante() existe.
+        Admin.EntregarComprobante(id_Act, comprobante);
+    }
+}
+
+
+Monitor Admin() {
+    Cond espera, solicitud;
+    ColaEspecial cola;
+    Comprobante comprobantes[N];
+
+    Procedure Atencion(id: in int; lista: in Lista; comprobante: out Comprobante)
+    {
+        push(cola, (id, lista));
+        signal(solicitud);
+        wait(espera);
+        comprobante = comprobantes[id];
+    }
+
+    Procedure Siguiente(id: out int; lista: out Lista) {
+        if(empty(cola)) {wait(solicitud)}
+        pop(cola, (id, lista));
+    }
+
+    Procedure EntregarComprobante(id: in int; C: in Comprobante) {
+        comprobantes[id] = C;
+        signal(espera);
+    }
+}

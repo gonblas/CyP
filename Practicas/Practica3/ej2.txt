@@ -1,0 +1,217 @@
+2. Existen N personas que deben fotocopiar un documento cada una. Resolver cada ítem
+usando monitores:
+
+a) Implemente una solución suponiendo que existe una única fotocopiadora compartida
+por todas las personas, y las mismas la deben usar de a una persona a la vez, sin
+importar el orden. Existe una función Fotocopiar() que simula el uso de la fotocopiadora.
+Sólo se deben usar los procesos que representan a las Personas (y los monitores que sean
+necesarios).
+
+
+Process Persona[id:0..N-1]
+{
+    Impresora.Utilizar();
+}
+
+Monitor Impresora {
+    Procedure Utilizar()
+    {
+        Fotocopiar();
+    }
+}
+
+
+
+
+b) Modifique la solución de (a) para el caso en que se deba respetar el orden de llegada.
+
+Process Persona[id:0..N-1]
+{
+    Fila.Entrar();
+    Fotocopiar();
+    Fila.Salir();
+}
+
+Monitor Fila {
+    Cond fila;
+    bool libre = true;
+    int esperando = 0;
+
+    Procedure Entrar()
+    {
+        if(not libre) {esperando++; wait(fila);}
+        else libre = false;
+    }
+
+    Procedure Salir()
+    {
+        if(esperando > 0) {signal(fila); esperando--;}
+        else libre = true;
+    }
+}
+
+
+c) Modifique la solución de (b) para el caso en que se deba dar prioridad de acuerdo a la
+edad de cada persona (cuando la fotocopiadora está libre la debe usar la persona de
+mayor edad entre las que estén esperando para usarla).
+
+Process Persona[id:0..N-1]
+{
+    Fila.Entrar(id, edad);
+    Fotocopiar();
+    Fila.Salir();
+}
+
+
+Monitor Fila {
+    Cond espera[N];
+    ColaEspecial cola;
+    bool libre = true;
+
+    Procedure Entrar(id, edad: in int)
+    {
+        if(not libre) {push(cola, id, edad); wait(espera[id]);}
+        else libre = false;
+    }
+
+    Procedure Salir()
+    int id_libre;
+    {
+        if(empty(cola)) {libre = true;}
+        else {
+            pop(cola, id_libre);
+            signal(espera[id_libre]);
+        }
+    }
+}
+
+
+d) Modifique la solución de (a) para el caso en que se deba respetar estrictamente el orden
+dado por el identificador del proceso (la persona X no puede usar la fotocopiadora
+hasta que no haya terminado de usarla la persona X-1).
+
+Process Persona[id:0..N-1]
+{
+    Fila.Entrar(id);
+    Fotocopiar();
+    Fila.Salir();
+}
+
+
+Monitor Fila {
+    Cond espera[N];
+    int id_act = 0;
+
+
+    Procedure Entrar(id: in int)
+    {
+        if(id != id_act) {wait(espera[id]);}
+    }
+
+    Procedure Salir()
+    {
+        id_act++;
+        signal(espera[id_act]);
+    }
+}
+
+
+
+e) Modifique la solución de (b) para el caso en que además haya un Empleado que le indica
+a cada persona cuando debe usar la fotocopiadora.
+
+Process Persona[id:0..N-1]
+{
+    Atencion.EsperarLlamado();
+    Fotocopiar();
+    Atencion.Salir();
+}
+
+Process Empleado
+{   
+    int atendidos = 0;
+    while(atendidos < N){
+        Atencion.Habilitar();
+        atendidos++;
+    }
+}
+
+Monitor Atencion {
+    Cond fila, cvEmpleado, cvListo;
+    int esperando = 0;
+
+    Procedure EsperarLlamado()
+    {
+        esperando++;
+        signal(cvEmpleado);
+        wait(fila);
+    }
+
+    Procedure Habilitar()
+    {   
+        if(esperando == 0) {wait(cvEmpleado);}
+        esperando--;
+        signal(fila); 
+        wait(cvListo);
+    }
+
+    Procedure Salir()
+    {   
+        signal(cvListo);
+    }
+}
+
+
+
+
+f) Modificar la solución (e) para el caso en que sean 10 fotocopiadoras. El empleado le
+indica a la persona cuando puede usar una fotocopiadora, y cual debe usar.
+
+
+Process Persona[id:0..N-1]
+{
+    Atencion.EsperarLlamado(id, nro);
+    Fotocopiar(nro);
+    Atencion.Liberar(nro);
+}
+
+Process Empleado
+{   
+    int atendidos = 0;
+    while(atendidos < N){
+        Atencion.Habilitar();
+        atendidos++;
+    }
+}
+
+Monitor Atencion {
+    cond cvEmpleado, cvLibres, espera[N];
+    cola fila, fotocopiadoras = {1,2,3,4,5,6,7,8,9,10};
+    int asignaciones[N] = ([N] -1);
+
+    Procedure EsperarLlamado(id: in int; nro: out int)
+    {
+        push(fila, id);
+        signal(cvEmpleado);
+        wait(espera[id]);
+        nro = asignaciones[id];
+    }
+
+
+    Procedure Habilitar()
+    {
+        if(empty(fila)) {wait(cvEmpleado);}
+        int id = pop(fila, id);
+        if(empty(fotocopiadoras)) {wait(cvLibres);}
+        asignaciones[id] = pop(fotocopiadoras);
+        signal(espera[id]);
+    }
+
+    
+    Procedure Liberar(nro: in int)
+    {   
+        push(fotocopiadoras, nro);
+        signal(cvLibres);
+    }
+}
+
