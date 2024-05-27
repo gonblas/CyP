@@ -1,0 +1,105 @@
+1. Resolver con SENTENCIAS AWAIT (<> y/o < await B; S >) el siguiente problema. Para un partido de fútbol
+se venden E entradas de forma online, y hay P personas (P>E) que intentan comprar una entrada formando una
+única fila. Para la venta existen 5 boleterías virtuales que van atendiendo los pedidos de las personas de acuerdo con el orden de llegada. Cuando una boletería atiende a una persona, si aún quedan entradas disponibles le envía el numero de entrada vendida, sino le indica que no hay más entradas. Nota: Maximizar la concurrencia.
+
+
+int entradas[P] = ([P] 0);
+int disponibles = E, atendidas = 0;
+Cola C;
+
+Process Persona[id:0..P-1]{
+    <push(C, id)>;
+    <await (entradas[id] != 0)>;
+    if(entradas[id] > 0){
+        print('Gaaddd');
+    }
+    else{
+        print('La concha de tu madre bob esponja');
+    }
+}
+
+
+
+Process Boleteria[id:0..4]{
+    while(true){
+        <await (not empty(C) or atendidas == P)>;
+        <if(atendidas == P) {break;}
+        else {pop(C, id); atendidas++}>
+        
+        <if(disponibles>0) {disponibles--; entradas[act_id] = atendidas;}
+        else entradas[act_id] = -1;>
+    }
+}
+
+
+
+
+
+
+
+2. Resolver con SEMÁFOROS el siguiente problema. En un camino turístico hay un puente por donde puede pasar
+un vehículo a la vez. Hay N autos que deben pasar por el de acuerdo con el orden de llegada. Nota: Solo se pueden usar los procesos que representan a los autos; suponga que existe la función Pasar() que simula el paso del auto por el puente.
+
+sem espera[N] = ([N] 0), mutex = 1;
+bool libre = true;
+Cola C;
+
+
+Process Auto[id:0..N-1]{
+    P(mutex);
+    if(libre) {libre = false; V(mutex);}
+    else {push(C, id); V(mutex); P(espera[id]);}
+
+    Pasar();
+
+    P(mutex);
+    if(not empty(C)) {pop(C, id_act); V(espera[id_act]);}
+    else {libre = false;}
+    V(mutex);
+}
+
+
+
+
+
+3. Resolver con MONITORES el siguiente problema. Para un experimento se tiene una red con 15 controladores
+de temperatura y un modulo central. Los controladores cada cierto tiempo toman la temperatura mediante la
+función medir(), y se la envían a la central para que esta le indique que debe hacer (número de 1 a 10), y luego realiza esa acción mediante la función actuar(). La central atiende los pedidos de los controladores de acuerdo al orden de llegada, usando la función determinar() para determinar la acción que deberá hacer ese controlador (número de 1 a 10). Nota: el tiempo que espera cada controlador para tomar nuevamente la temperatura empieza a contar después de haber ejecutado la función actuar().
+
+
+Process Controlador[id:0..14]{
+    while(true){
+        Temperatura temp = medir();
+        Canal.EnviarDatos(id, temp, accion);
+        actuar(accion);
+    }
+}
+
+
+Process ModuloCentral {
+    while(true){
+        Canal.Atender();
+    }
+}
+
+
+Monitor Canal {
+    cond cvControlador, cvModulo;
+    int esperando = 0, acciones[15] = ([15] -1);
+    Cola C;
+
+    Procedure EnviarDatos(id: in int; temp: in Temperatura; accion: out int){
+        push(C, id, temp);
+        esperando++;
+        signal(cvModulo);
+        wait(cvControlador);
+    }
+
+    Procedure Atender(){
+        if(esperando == 0) {wait(cvModulo);}
+        esperando--;
+        pop(C, id, temp);
+        acciones[id] = determinar(temp);
+        signal(cv);
+    }
+}

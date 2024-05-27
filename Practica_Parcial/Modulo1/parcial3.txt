@@ -1,0 +1,129 @@
+1. Resolver con SENTENCIAS AWAIT ( <> y <await B ; S >) el problema de los filósofos evitando deadlock
+y demora innecesaria.
+
+bool tenedores[N] = ([N] libres); --Van desde 0 a N-1 e indican con true si estan libres
+-- Todos tienen que agarrar dos tenedores, comen y pensar. El deadlock se genera cuando todos agarran un recurso, y les falta el otro, por lo tanto, hay que hacer que uno agarre primero el otro.
+
+
+Process Filosofo[id:0..N]{
+    if(id==0){
+        <await(tenedores[id+1]); tenedores[id+1]=false>; -- Agarra el derecho
+        <await(tenedores[id]); tenedores[id]=false>; -- Agarra el izquierdo
+    }
+    else {
+        <await(tenedores[(id+1)%N]); tenedores[(id+1)%N]=false>; -- Agarra el izquierdo
+        <await(tenedores[(id+1)%N]); tenedores[(id+1)%N]=false>; -- Agarra el derecho
+    }
+
+    -- Comer
+    tenedores[id] = true;
+    tenedores[id+1] = true;
+
+    -- Pensar
+}
+
+
+
+
+
+
+2. Resolver con SEMAFOROS el funcionamiento en una fábrica de ventanas con 7 empleados (4 carpinteros, 1
+vidriero y 2 armadores) que trabajan de la siguiente manera:
+• Los carpinteros continuamente hacen marcos (cada marco es armando por un único carpintero) y los deja en un
+depósito con capacidad de almacenar 30 marcos.
+• El vidriero continuamente hace vidrios y los deja en otro depósito con capacidad para 50 vidrios.
+• Los armador continuamente toman un marco y un vidrio de los depósitos correspondientes y arman la ventana (cada ventana es armada por un único armador).
+Nota: maximizar la concurrencia.
+
+
+sem marcos_hechos = 0, vidrios_hechos = 0, deposito_marcos = 30, deposito_vidrios = 50;
+
+Process Carpintero[id:0..3]{
+    while(true){
+        V(marcos_hechos);
+        -- Hacer marco
+        P(deposito_marcos);
+    }
+}
+
+
+Process Vidriero{
+    while(true){
+        V(vidrios_hechos);
+        -- Hacer marco
+        P(deposito_vidrios);
+    }
+}
+
+
+Process Armador[id:0..1]{
+    while(true){
+        P(marcos_hechos);
+        V(deposito_marcos);
+        P(vidrios_hechos);
+        V(deposito_vidrios);
+
+        --Armar ventana
+    }
+}
+
+
+
+
+3. Resolver con MONITORES el uso de un equipo de videoconferencia que puede ser usado por una única persona a
+la vez. Hay P Personas que utilizan este equipo (una única vez cada uno) para su trabajo de acuerdo a su prioridad. La prioridad de cada persona está dada por un número entero positivo. Además existe un Administrador que cada 3 hs. incrementa en 1 la prioridad de todas las personas que están esperando por usar el equipo. Nota: maximizar la concurrencia.
+
+
+Process Persona[id:0..P-1]{
+    int prioridad = ...;
+    Videoconferencia.Pedir(prioridad);
+    -- Usar la videoconferencia.
+    Videoconferencia.Liberar();
+}
+
+
+
+Process Administrador {
+    while(true){
+        Delay(3hs);
+        Videoconferencia.AumentarPrioridad();
+    }
+}
+
+
+
+Monitor Videoconferencia {
+    int libre = true;
+    Cola(int, int) C;
+    cond espera[P];
+
+    Procedure Pedir(prioridad: in int) {
+        if(libre) {libre = false;}
+        else {
+            push(C, (id, prioridad));
+            wait(espera[id]);
+        }
+    }
+
+    Procedure Liberar() {
+        if(not empty(C)) {
+            pop(C, (id, prior));
+            signal(espera[id]);
+        }
+        else {
+            libre = false;
+        }
+    }
+
+    Procedure AumentarPrioridad(){
+        Cola(int, int) temp;
+        while(not empty(C)){
+            pop(C, (id_act, prior));
+            prior++;
+            push(temp, (id, prior));
+        }
+        
+        C=temp;
+    }
+}
+

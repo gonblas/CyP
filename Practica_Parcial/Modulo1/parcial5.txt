@@ -1,0 +1,143 @@
+1. Resolver con SENTENCIAS AWAIT (<> y/o <await B; S>) el siguiente problema. Se debe calcular el
+valor promedio de un vector de 1000 números por medio de 10 procesos. Al finalizar todos los procesos
+deben guardar en una variable local el resultado final. Nota: maximizar la concurrencia.
+
+
+float vector[1000] = ...;
+float promedio = 0;
+int terminaron = 0;
+
+
+Process Trabajador[id:0..9]{
+    int i;
+    float prom = 0;
+    for i:100*id..100*id+100{
+        prom = prom + vector[i];
+    }
+    prom = prom/1000;
+    <promedio = promedio + prom;>;
+    <terminaron++;>;
+    <await (terminaron==10)>;
+    float resultado = promedio;
+}
+
+
+
+
+2. Resolver el siguiente problema con SEMÁFOROS. Simular la atención en una Salita Médica para vacunar
+contra el coronavirus. Hay UNA enfermera encargada de vacunar a 30 pacientes, cada paciente tiene un
+turno asignado (valor entero entre 1..30 ya conocido por el paciente). La enfermera atiende a los pacientes
+en un consultorio (donde no puede haber más de un paciente a la vez) de acuerdo al turno que cada uno
+tiene asignado. Cada paciente al llegar espera a que sea su turno y luego se dirige al consultorio, le entrega la libreta de vacunación a la enfermera, espera que esta lo vacune y le devuelva la libreta firmada, y luego se retira. Nota: suponer que existe una función Vacunar() que simula la atención del paciente por parte de la enfermera. Todos los procesos deben terminar.
+
+sem espera[30] = ([30] 0), enfermera = 0;
+Libreta lib;
+
+
+Process Enfermera {
+    int i;
+
+    for i:1..30{
+        V(espera[i-1]);
+        P(enfermera);
+        Vacunar();
+        lib = ...; -- Libreta firmada
+        V(espera[i-1]);
+        P(enfermera);
+    }
+}
+
+
+
+Process Paciente[id:0.29]{
+    int turno = ...;
+    P(espera[turno-1]);
+    lib = ...;
+    V(enfermera);
+    P(espera[turno-1]);
+    Libreta mi_lib = lib;
+    V(enfermera);
+}
+
+
+
+
+
+3. Resolver el siguiente problema con MONITORES. Simular el funcionamiento de un Complejo de
+Canchas de Futbol 5 que posee 8 canchas y donde hay una máquina encargada de asignar las canchas. Al
+complejo acuden 80 jugadores divididos en 8 grupos (cada grupo tiene las 10 personas que jugarán en una
+cancha), cada jugador ya conoce a qué grupo pertenece. Cuando un jugador llega le indica a la máquina el
+grupo al que pertenece para que esta le indique el número de cancha a la cual debe ir, y luego se dirige a ella. Cuando los 10 integrantes de un grupo han llegado a la cancha que les corresponde, comienzan a jugar el
+partido que dura 50 minutos; y luego se retiran. La máquina asigna el número de cancha de acuerdo al orden
+en que llega el primer jugador de cada grupo. Nota: maximizar la concurrencia.
+
+-- Las canchas se enumeran de la 0 a la 7.
+
+Process Jugador[id:0..79]{
+    grupo = ...;
+    Canal.SolicitarCancha(grupo, nro);
+    Canal.ComenzarPartido(nro);
+    delay(50min); -- Jugar partido.
+    -- Termina el partido
+}
+
+-- Si no tuviese que terminar (lo cual no especifica podria maximizar la concurrencia haciendo un signal all 
+-- del grupo que ya tiene cancha asignada).
+Process Maquina{
+    for i:1.80 {
+        Canal.Atender();
+    }
+}
+
+
+
+Monitor Canal{
+    int esperando = 0;
+    int cancha_actual = 0, canchas[8] = ([8] -1), llegaron[8] = ([8] 0);
+    cond espera[8], cancha[8], espera_maquina;
+    Cola C;
+
+
+    Procedure SolicitarCancha(grupo: in int; nro: out int){
+        push(C, grupo);
+        esperando++;
+        signal(espera_maquina);
+        wait(espera[grupo]);
+        nro = canchas[grupo];
+    }
+
+    Procedure ComenzarPartido(nro: in int){
+        llegaron[nro]++;
+        if(llegaron == 10) {signal_all(cancha[nro]);}
+        else {wait(cancha[nro]);}
+    }
+
+    Procedure Atender(){
+        if(esperando == 0) {wait(espera_maquina)}
+        pop(C, grupo_act);
+        if(canchas[grupo_act] == -1) {canchas[grupo_act] == cancha_actual; cancha_actual++;}
+        signal(espera[grupo_act]);
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
