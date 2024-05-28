@@ -1,0 +1,61 @@
+3. Se debe modelar una casa de Comida Rápida, en el cual trabajan 2 cocineros y 3
+vendedores. Además, hay C clientes que dejan un pedido y quedan esperando a que se lo
+alcancen.
+Los pedidos que hacen los clientes son tomados por cualquiera de los vendedores y se lo
+pasan a los cocineros para que realicen el plato. Cuando no hay pedidos para atender, los
+vendedores aprovechan para reponer un pack de bebidas de la heladera (tardan entre 1 y 3
+minutos para hacer esto).
+Repetidamente cada cocinero toma un pedido pendiente dejado por los vendedores, lo
+cocina y se lo entrega directamente al cliente correspondiente.
+Nota: maximizar la concurrencia.
+
+type comida;
+chan pedidos(int, comida), pedidos_cocina(int, comida), comidas[C](comida), siguiente[3](int, comida), pedidos_vendedores(int);
+
+
+Process Cliente[id:0..C-1]{
+    comida mi_comida = ..., comida_cocinada;
+    send pedidos(id, mi_comida);
+    receive comidas[id](comida_cocinada);
+}
+
+
+Process Coordinador {
+    comida pedido;
+    int id_cliente, id_vendedor;
+    while(true){
+        receive pedidos_vendedores(id_vendedor);
+        if(empty (pedidos)) {id_cliente = -1;}
+        else {receive pedidos(id_cliente, pedido);}
+        
+        send siguiente[id_vendedor](id_cliente, comida);
+    }
+}
+
+
+Process Vendedor[id:0..2]{
+    comida comida_cliente;
+    int id_cliente;
+    while(true){
+        send pedidos_vendedores(id);
+        receive siguiente[id](id_cliente, comida_cliente);
+
+        if(id_cliente = -1){ -- Si no hay ningun pedido
+            delay(random(60, 180)); -- reponer un pack de bebidas de la heladera
+        }
+        else {
+            send pedidos_cocina(id_cliente, comida_cliente);
+        }
+    }
+}
+
+
+Process Cocinero[id:0..1]{
+    int id_cliente;
+    comida comida_cliente, comida_cocinada;
+    while(true){
+        receive pedidos_cocina(id_cliente, comida_cliente);
+        -- Cocinar el pedido realizado
+        send comidas[id_cliente](comida_cocinada);
+    }
+}

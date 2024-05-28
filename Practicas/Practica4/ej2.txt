@@ -1,0 +1,50 @@
+2. Se desea modelar el funcionamiento de un banco en el cual existen 5 cajas para realizar
+pagos. Existen P personas que desean pagar. Para esto cada una selecciona la caja donde
+hay menos personas esperando, una vez seleccionada espera a ser atendido.
+NOTA: maximizando la concurrencia.
+
+type clase_op = enum(solicitar, liberar);
+chan request(int, clase_op), respuestas[P](int), pedido_caja[5](int), listo[5](bool);
+
+
+Process Persona[id: 0..P-1]{
+    send request(id, solicitar);
+    int num_caja;
+    receive respuestas[id](num_caja);
+
+    send pedido_caja[num_caja](id);
+    receive respuestas[id](num_caja); -- Se recibe num_caja nuevamente solo para enviar algo, indica que esta libre
+
+    -- Usas la caja #num_caja
+
+    send listo[num_caja](true);
+}
+
+
+Process Coordinador {
+    int num, esperando[5] = 0, min_act; 
+    clase_op op;
+    while(true){
+        receive request(num, op);
+        if(op = solicitar){ -- num = id de la persona
+            min_act = min(esperando); --Devuelve la caja con menos personas esperando
+            esperando[min_act]++;
+            send respuestas[num](min_act);
+        }
+        else { -- num = numero de caja a liberar
+            esperando[num]--;
+        }
+    }
+}
+
+
+Process Caja[num:0..4]{
+    int act_id;
+    bool termino;
+    while(true){
+        receive pedido_caja[num](act_id);
+        send request(num, liberar);
+        send respuestas[act_id](num);
+        receive listos[num](termino);
+    }
+}

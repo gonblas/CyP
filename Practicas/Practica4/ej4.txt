@@ -1,0 +1,65 @@
+4. Simular la atención en un locutorio con 10 cabinas telefónicas, que tiene un empleado que
+se encarga de atender a los clientes. Hay N clientes que al llegar esperan hasta que el
+empleado les indica a que cabina ir, la usan y luego se dirigen al empleado para pagarle. El
+empleado atiende a los clientes en el orden en que hacen los pedidos, pero siempre dando
+prioridad a los que terminaron de usar la cabina. Nota: maximizar la concurrencia; suponga
+que hay una función Cobrar() llamada por el empleado que simula que el empleado le cobra
+al cliente.
+
+type clase_op = enum(solicitar, liberar);
+chan cola_cabina(int), cola_cobros(int, int), respuestas[N](int);
+chan aviso(int);
+
+Process Cliente[id:0..N]{
+    int num_cabina;
+    send cola_cabina(id, solicitar);
+    send aviso(1);
+    receive respuestas[id](num_cabina);
+
+    -- Usar cabina #num_cabina
+
+    send cola_cabina(num_cabina, liberar);
+    send aviso(1);
+    send cola_cobros(id);               -- Avisa que esta para que le cobren
+    send aviso(1);
+    receive respuestas[id](num_cabina); -- Recibe que ya le cobraron
+}
+
+
+Process Empleado {
+    queue libres = {1,2,3,4,5,6,7,8,9,10}, pendientes;
+    int id_cliente, nuevo_libre, num;
+    clase_op op;
+
+    while(true){
+        receive aviso(ok);
+        if(not empty(cola_cobros)){
+            receive cola_cobros(id_cliente);
+            Cobrar();
+            send respuestas[id_cliente](-1);
+        }
+        else{
+            if(not empty(cola_cabina)){
+                receive cola_cabina(num, op);
+                if(op = solicitar){
+                    id_cliente = num;
+                    if(not empty(libres)){ 
+                        send respuestas[id_cliente](pop(libres));
+                    }
+                    else{
+                        push(pendientes, id_cliente);
+                    }
+                }
+                else {
+                    nuevo_libre = num;
+                    if(not empty(pendientes)){
+                        send respuestas[id_cliente](nuevo_libre);
+                    }
+                    else {
+                        push(nuevo_libre);
+                    }
+                }
+            }
+        }
+    }
+}

@@ -1,0 +1,68 @@
+5. Resolver la administración de las impresoras de una oficina. Hay 3 impresoras, N usuarios y
+1 director. Los usuarios y el director están continuamente trabajando y cada tanto envían
+documentos a imprimir. Cada impresora, cuando está libre, toma un documento y lo
+imprime, de acuerdo al orden de llegada, pero siempre dando prioridad a los pedidos del
+director. Nota: los usuarios y el director no deben esperar a que se imprima el documento.
+
+type documento;
+chan cola_usuarios(int, doc), cola_director(doc), respuestas[N](doc), respuesta_director(doc);
+chan aviso(int);
+
+Process Usuario[id:0..N-1]{
+    documento doc;
+    while(true){
+        -- Trabaja
+        send cola_usuarios(id, doc);
+        send aviso(1);
+        receive respuestas[id](doc);
+    }
+}
+
+
+Process Director {
+    documento doc;
+    while(true){
+        -- Trabaja
+        send cola_director(doc);
+        send aviso(1);
+        receive respuesta_director(doc);
+    }
+}
+
+
+Process Impresora[id: 0..2] {
+    int id_act, ok;
+    documento doc_act, doc_impreso;
+    while(true){
+        receive aviso(ok);
+        if(not empty(cola_director)){
+            receive cola_director(doc_act);
+            -- imprimir
+            send respuesta_director(doc_impreso);
+        }
+        else {
+            if(not empty(cola_usuarios)){
+                receive cola_usuarios(id_act, doc_act);
+                -- imprimir
+                send respuestas[id_act](doc_impreso);
+            }
+        }
+    }
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
