@@ -1,0 +1,61 @@
+8. Resolver con PMS (Pasaje de Mensajes SINCRÓNICOS) el siguiente problema. En un
+examen final hay P alumnos y 3 profesores. Cuando todos los alumnos han llegado
+comienza el examen. Cada alumno resuelve su examen, lo entrega y espera a que alguno de
+los profesores lo corrija y le indique la nota. Los profesores corrigen los exámenes
+respectando el orden en que los alumnos van entregando. Nota: maximizar la concurrencia
+y no generar demora innecesaria.
+
+-- Por simplicidad supongo que los examenes los tiene el admin.
+
+Process Alumno[id:0..P-1]{
+    text mi_examen;
+
+    Admin!llegue();
+    Admin?comienzo(mi_examen);
+
+    -- Realiza el examen
+
+    Admin!termine(id, mi_examen);
+    Admin?nota(mi_nota);
+}
+
+Process Admin {
+    text examenes[P] = ..., examen_act;
+    float nota_act;
+    queue(id, text) cola;
+    int i, id_alumno, id_profesor;
+
+    -- Barrera inicial
+    for i:= 1 to P -> Alumno[*]?llegue();
+    for i:= 1 to P -> Alumno[i]!comienzo(examenes[i]);
+
+    -- Entrega de notas
+    do Alumno[*]?termine(id_alumno, examen_act) -> push(cola, (id_alumno, examen_act));
+    □  (not empty(cola)); Profesor[*]?pedido(id_profesor) -> Profesor[id_profesor]!siguiente(pop(cola));
+    □  Profesor[*]?correccion(id_alumno, nota_act) -> Alumno[id_alumno]!nota(nota_act); -- No hay un delay innecesario porque el alumno seguro esta esperando la nota.
+}
+
+
+
+Process Profesor[id:0..2]{
+    float nota;
+    int id_alumno;
+    text examen_act;
+
+    while(true) {
+        Admin!pedido(id);
+        Admin?siguiente(id_alumno, examen_act);
+        nota = CorregirExamen(examen_act);
+        Admin!correccion(id_alumno, nota);
+    }
+}
+
+
+
+
+
+
+
+
+
+
