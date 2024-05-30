@@ -89,15 +89,15 @@ BEGIN
             OR WHEN(AtenderPersona'count = 0) => ACCEPT AtenderEnfermera(res: OUT Text) IS 
                 res := DarResultado(); 
             END AtenderEnfermera;
-        END SELECT;
-        # Tambien se podria dejar en el consultorio y que la enfermera lo agarre cuando pueda
-        SELECT Consultorio.SiguienteNota() IS 
-            ACCEPT VerNota(idE: IN integer, nota: IN text) IS
-                res := DarResultado(nota); 
-                enfermeras(idE).ResultadoNota(res);
-            END VerNota;
-        ELSE
-            NULL;
+            ELSE
+                SELECT Consultorio.SiguienteNota() IS 
+                    ACCEPT VerNota(idE: IN integer, nota: IN text) IS
+                        res := DarResultado(nota); 
+                        enfermeras(idE).ResultadoNota(res);
+                    END VerNota;
+                ELSE
+                    NULL;
+                END SELECT;
         END SELECT;
     END LOOP;
 END Medico;
