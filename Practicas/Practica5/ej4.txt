@@ -1,0 +1,131 @@
+4. En una clínica existe un médico de guardia que recibe continuamente peticiones de
+atención de las E enfermeras que trabajan en su piso y de las P personas que llegan a la
+clínica ser atendidos.
+Cuando una persona necesita que la atiendan espera a lo sumo 5 minutos a que el médico lo
+haga, si pasado ese tiempo no lo hace, espera 10 minutos y vuelve a requerir la atención del
+médico. Si no es atendida tres veces, se enoja y se retira de la clínica.
+Cuando una enfermera requiere la atención del médico, si este no lo atiende inmediatamente
+le hace una nota y se la deja en el consultorio para que esta resuelva su pedido en el
+momento que pueda (el pedido puede ser que el médico le firme algún papel). Cuando la
+petición ha sido recibida por el médico o la nota ha sido dejada en el escritorio, continúa
+trabajando y haciendo más peticiones.
+El médico atiende los pedidos teniendo dándoles prioridad a los enfermos que llegan para ser
+atendidos. Cuando atiende un pedido, recibe la solicitud y la procesa durante un cierto
+tiempo. Cuando está libre aprovecha a procesar las notas dejadas por las enfermeras.
+
+
+
+Procedure ej4 IS
+
+TASK TYPE Enfermera IS
+    ENTRY ResultadoNota(res: IN Text);
+    ENTRY Identificarme(num: IN integer);
+END Enfermera;
+
+TASK TYPE Persona;
+
+TASK Medico IS
+    ENTRY AtenderPersona(res: OUT Text);
+    ENTRY AtenderEnfermera(res: OUT Text);
+    ENTRY VerNota(idE: IN integer, nota: IN text);
+END Medico;
+
+TASK Consultorio IS
+    ENTRY EntregarNota(id: IN integer, nota: IN Text);
+    ENTRY SiguienteNota();
+END Consultorio;
+
+enfermeras = ARRAY(1..E) OF Enfermera;
+personas = ARRAY(1..P) OF Persona;
+
+
+TASK BODY Persona IS
+    cant_ignoradas: integer;
+    atendido: bool;
+    res: Text;
+BEGIN
+    cant_ignoradas := 0;
+    atendido := false;
+    while((not atendido) and (cant_ignoradas < 3)) LOOP
+        SELECT Medico.AtenderPersona(res);
+            atendido := true;
+        OR DELAY 300
+            cant_ignoradas := cant_ignoradas + 1;
+            DELAY 600;
+        END SELECT;
+    END LOOP;
+END Persona;
+
+
+TASK BODY Enfermera IS
+    nota, res: Text;
+    id: integer;
+BEGIN
+    ACCEPT Identificarme(num: IN integer) IS id := i; END Identificarme;
+    LOOP
+        # Trabaja 
+        SELECT Medico.AtenderEnfermera(res);
+        ELSE
+            nota := ...;
+            Consultorio.EntregarNota(id, nota);
+        END SELECT;
+
+        SELECT ACCEPT ResultadoNota(res: IN Text);
+        ELSE
+            NULL;
+        END SELECT;
+    END LOOP;
+END Enfermera;
+
+
+TASK BODY Medico IS
+    res: Text;
+BEGIN
+    LOOP
+        SELECT 
+            ACCEPT AtenderPersona(res: OUT Text) IS 
+                res := DarResultado(); 
+            END AtenderPersona;
+            OR WHEN(AtenderPersona'count = 0) => ACCEPT AtenderEnfermera(res: OUT Text) IS 
+                res := DarResultado(); 
+            END AtenderEnfermera;
+        END SELECT;
+        # Tambien se podria dejar en el consultorio y que la enfermera lo agarre cuando pueda
+        SELECT Consultorio.SiguienteNota() IS 
+            ACCEPT VerNota(idE: IN integer, nota: IN text) IS
+                res := DarResultado(nota); 
+                enfermeras(idE).ResultadoNota(res);
+            END VerNota;
+        ELSE
+            NULL;
+        END SELECT;
+    END LOOP;
+END Medico;
+
+
+TASK BODY Consultorio IS
+    nota: Text;
+    queue(Text) notas;
+    id: integer;
+BEGIN
+    LOOP
+        SELECT 
+            ACCEPT EntregarNota(id: IN integer, nota: IN Text) IS 
+                push(id, nota); 
+            END EntregarNota;
+            OR WHEN(not empty(notas)) => ACCEPT SiguienteNota() IS 
+                pop(notas, (nota, id));
+                Medico.VerNota(id, nota);
+            END AtenderEnfermera;
+        END SELECT;
+    END LOOP;
+END Consultorio;
+
+
+BEGIN
+    for i:= 1 to E LOOP
+        enfermeras(i).Identificarme(i);
+    END LOOP;
+END;
+
+# No me parece la mejor solucion por el manejo de las notas, si la enfermera tarda mucho trabajando y encribiendo una nota, entonces el medico puede esperar mucho.

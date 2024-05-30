@@ -22,7 +22,7 @@ Process Empleado {
     queue cola;
 
     do Persona[*]?acceso(id_act) -> 
-        if(libre) Persona[id_act]!proceda();
+        if(libre) {libre = false; Persona[id_act]!proceda();}
         else push(cola, id_act);
     □  Persona[*]?liberar() -> 
         if(not empty(cola)) Persona[pop(cola)]!proceda();

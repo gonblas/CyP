@@ -1,0 +1,65 @@
+1. Se requiere modelar un puente de un solo sentido, el puente solo soporta el peso de 5 unidades de peso. Cada auto pesa 1 unidad, cada camioneta pesa 2 unidades y cada camión 3 unidades. Suponga que hay una cantidad innumerable de vehículos (A autos, B
+camionetas y C camiones).
+b. Modifique la solución para que tengan mayor prioridad los camiones que el resto de los vehículos.
+
+
+Procedure ej1b is
+
+TASK TYPE Auto;
+TASK TYPE Camioneta;
+TASK TYPE Camion;
+
+TASK Admin is
+    ENTRY PasarAuto();
+    ENTRY PasarCamioneta();
+    ENTRY PasarCamion();
+    ENTRY Liberar(peso: IN integer);
+END Admin;
+
+autos: ARRAY(1..A) OF Auto;
+camionetas: ARRAY(1..B) OF Camioneta;
+camiones: ARRAY(1..C) OF Camion;
+
+TASK BODY Auto IS
+    Admin.PasarAuto();
+    -- Pasar por el camino
+    Admin.Liberar(1);
+END Auto;
+
+TASK BODY Camioneta IS
+    Admin.PasarCamioneta();
+    -- Pasar por el camino
+    Admin.Liberar(2);
+END Camioneta;
+
+TASK BODY Camion IS
+    Admin.PasarCamion();
+    -- Pasar por el camino
+    Admin.Liberar(3);
+END Camion;
+
+TASK BODY Admin IS
+    peso_permitido, aux: integer;
+    queue cola;
+Begin
+    peso_permitido := 5;
+    LOOP
+        SELECT WHEN((peso_permitido >= 1) and ((PasarCamion'count = 0) and (peso_permitido >= 3))) => ACCEPT PasarAuto() IS 
+                peso_permitido := peso_permitido - 1;
+            END PasarAuto;
+            OR WHEN((peso_permitido >= 2) and ((PasarCamion'count = 0) and (peso_permitido >= 3))) => ACCEPT PasarCamioneta() IS 
+                peso_permitido := peso_permitido - 2; 
+            END PasarCamioneta;
+            OR WHEN(peso_permitido >= 3) => ACCEPT PasarCamion() IS 
+                peso_permitido := peso_permitido - 3; 
+            END PasarCamion;
+            OR ACCEPT Liberar(peso: IN integer) IS 
+                peso_permitido := peso_permitido + aux; 
+            END Liberar;
+        END SELECT;
+    END LOOP;
+END Admin;
+
+Begin
+    NULL;
+End ej1b;

@@ -1,0 +1,65 @@
+3. Se dispone de un sistema compuesto por 1 central y 2 procesos. Los procesos envían señales a la central. La central comienza su ejecución tomando una señal del proceso 1, luego toma aleatoriamente señales de cualquiera de los dos indefinidamente. Al recibir una señal de proceso 2, recibe señales del mismo proceso durante 3 minutos.
+El proceso 1 envía una señal que es considerada vieja (se deshecha) si en 2 minutos no fue recibida.
+El proceso 2 envía una señal, si no es recibida en ese instante espera 1 minuto y vuelve a mandarla (no se deshecha).
+
+
+Procedure ej3 IS 
+
+TASK Central IS
+    ENTRY Señal1(s: IN Señal);
+    ENTRY Señal2(s: IN Señal);
+END Central;
+
+
+TASK Proceso1;
+TASK Proceso2;
+
+
+TASK BODY Proceso1 IS
+    s: Señal;
+BEGIN
+    LOOP 
+        s = ProducirSeñal();
+        SELECT Central.Señal1(s);
+        OR DELAY 120
+            NULL;
+        END SELECT;
+    END LOOP;
+END Proceso1; 
+
+
+
+TASK BODY Proceso2 IS
+    s: Señal;
+BEGIN
+    desechar := true;
+    s = ProducirSeñal();
+    LOOP
+        SELECT Central.Señal2(s); s = ProducirSeñal();
+        ELSE
+            DELAY 60;
+        END SELECT;
+    END LOOP;
+END Proceso2; 
+
+# Supongo que hay una funcion que te funciona de clock, y que cuando pasaron los tres minutos a partir de recibir la señal del proceso 2 te devuelve true si ya pasaron. Debe llamarse cuando se recibio la señal una funcion de activacion ActivarClock(3) que indica que luego de los 3 minutos setee una variable en true, la cual se pasa en PasaronTresMin(). Si no se realiza esta suposición se podria resolver con un TASK de tipo Clock que vaya haciendo tics y que vaya contando.
+
+TASK BODY Central IS
+    s: Señal;
+BEGIN
+    ACCEPT Señal1(s: IN Señal);
+    LOOP
+        SELECT WHEN (PasaronTresMin()) => ACCEPT Señal1(s: IN Señal) IS 
+            Procesar(s); 
+        END Señal1;
+        OR ACCEPT Señal2(s: IN Señal) IS 
+            Procesar(s); 
+            ActivarClock(3); 
+        END Señal2;
+    END LOOP;
+END Central;
+
+
+BEGIN
+    NULL;
+END ej3;

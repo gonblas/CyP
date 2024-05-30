@@ -1,0 +1,53 @@
+5. En un sistema para acreditar carreras universitarias, hay UN Servidor que atiende pedidos
+de U Usuarios de a uno a la vez y de acuerdo al orden en que se hacen los pedidos. Cada
+usuario trabaja en el documento a presentar, y luego lo envía al servidor; espera la respuesta
+del mismo que le indica si está todo bien o hay algún error. Mientras haya algún error vuelve
+a trabajar con el documento y a enviarlo al servidor. Cuando el servidor le responde que
+está todo bien el usuario se retira. Cuando un usuario envía un pedido espera a lo sumo 2
+minutos a que sea recibido por el servidor, pasado ese tiempo espera un minuto y vuelve a
+intentarlo (usando el mismo documento).
+
+
+Procedure ej5 IS
+
+TASK TYPE Usuario;
+
+TASK Servidor IS
+    ENTRY EntregarDocumento(doc: IN Text, errores: OUT bool);
+END Usuario;
+
+TASK BODY Usuario IS
+    sigo, errores: bool;
+    doc: Text;
+BEGIN
+    sigo := true; errores := false;
+    doc := ...;
+    WHILE (sigo) LOOP
+        IF(errores)THEN
+            doc := ...;
+        SELECT
+            Servidor.EntregarDocumento(doc, errores);
+            sigo := errores;
+        DELAY 120
+            DELAY 60;
+            errores := false;
+        END SELECT;
+    END LOOP;
+END Usuario;
+
+usuarios = ARRAY(1..U) OF Usuario;
+
+
+TASK BODY IS
+    doc_act, res_act: Text;
+BEGIN
+    LOOP
+        ACCEPT EntregarDocumento(doc: IN Text, errores: OUT bool) IS
+            errores := ProcesarDoc(doc);
+        END EntregarDocumento;
+    END LOOP;
+END Servidor:
+
+BEGIN
+    NULL;
+END ej5;
