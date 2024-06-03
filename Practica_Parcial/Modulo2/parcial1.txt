@@ -1,0 +1,215 @@
+1. Resolver con PMS (Pasaje de Mensajes SINCRÓNICOS) el siguiente problema. En una carrera hay C corredores, 3 Coordinadores. Al llegar los corredores deben dirigirse a los coordinadores para que cualquiera de ellos le dé el número de chaleco con el que van a correr. Los coordinadores atienden a los corredores de acuerdo al orden de llegada (cuando un coordinador está libre atiende al primer corredor que está esperando). Cuando todos los corredores ya recibieron su número de chaleco comienza la carrera. Cuando un corredor termina de correr busca la posición en que termino la carrera y se retira. Nota: maximizar la concurrencia.
+
+
+Process Corredor[id:0..C-1]{
+    int num_chaleco, mi_pos;
+    Admin!llegada(id);
+    Coordinador[*]?entrega(num_chaleco);
+
+    Admin!barrera();
+
+    -- Corre la carrera
+
+    Admin!termine(id);
+    Admin?mi_posicion(mi_pos);
+}
+
+
+
+Process Admin {
+    int id_coord, id_corredor, listos = 0, pos_act = 1;
+    queue esperando;
+
+    do Corredor[*]?llegada(id_corredor) -> push(esperando, id_corredor);
+    □  (not empty(esperando)); Coordinador?siguiente() -> Coordinador!id_siguiente(pop(esperando)); 
+    □  Coordinador[*]?sumar_atendidos -> listos++;
+    □  (listos = C); Corredor[*]?barrera()
+    □  Corredor[*]?termine(id_corredor) -> Admin!mi_posicion(pos_act); pos_act++;
+}
+
+
+Process Coordinador[id:0..2]{
+    int id_sig, num_sig;
+    while(true){
+        Admin!siguiente(id);
+        Admin?id_siguiente(id_sig);
+        num_sig = DarNumeroChaleco();
+        Corredor[id_sig]!entrega(num_sig);
+        Admin!sumar_atendidos();
+    }
+}
+
+
+
+
+2. Resolver con PMA (Pasaje de Mensajes ASINCRÓNICOS) el siguiente problema. En una oficina hay 3 empleados y P personas que van para ser atendidas para iniciar un trámite, o para buscar su resultado. Cuando una persona llega espera hasta ser atendido por cualquiera de los empleados, le indica que necesita (iniciar trámite o buscar el resultado de un trámite) y espera hasta que terminan de atenderlo y le devuelven: un número de trámite en el primer caso, un dictamen en el segundo caso. Los empleados atienden las solicitudes en orden de llegada; si no hay personas esperando, durante 5 minutos resuelven trámites pendientes (simular el proceso de resolver trámites pendientes por medio de un delay). Cuando se han atendido a las P personas los empleados se retiran. Nota: no generar demora innecesaria; cada persona hace sólo un pedido y termina; los empleados deben terminar.
+
+
+type dictamen;
+type clase_op = enum(iniciar, buscar);
+type clase_res = enum(int, dictamen);
+
+chan request(int, clase_op), respuesta[P](clase_res), pedido(int), siguiente(int, clase_op, bool);
+
+Process Persona[id:0..P-1] {
+    clase_op op = ...;
+    clase_res res;
+    send request(id, op);
+    receive respuesta[id](res);
+}
+
+
+Process Admin {
+    int atendidos = 0, id_persona;
+    clase_op op;
+
+    while(atendidos < P) {
+        receive pedido(id_empleado);
+
+        if(not empty(request)) {
+            receive request(id_persona, op);
+            atendidos++;
+        }
+        else {id_persona = -1}
+
+        send siguiente(id_persona, op, atendidos < P);
+    }
+}
+
+
+Process Empleado[id:0..2] {
+    clase_res res;
+    clase_op op;
+    int id_persona, num;
+    bool sigo = true;
+
+    send siguiente(id);
+    receive siguiente(id_persona, op, sigo);
+    while(sigo) {
+        if(id_persona = -1){
+            delay(300);
+        }
+        else{
+            if(op = iniciar){
+                res = GenerarNumTramite(id_persona);
+            }
+            else {
+                res = GenerarDictamen(id_persona);
+            }
+            send respuesta[id_persona](res);
+        }
+
+        send siguiente(id);
+        receive siguiente(id_persona, op, sigo);
+    }
+}
+
+
+
+
+
+
+
+3. Resolver con ADA el siguiente problema. Hay una empresa de análisis genético. Hay N clientes que sucesivamente envían secuencias de ADN a la empresa para que sean analizadas y esperan los resultados para poder enviar otra secuencia a analizar. Para resolver estos análisis la empresa cuenta con 4 servidores que van rotando su uso para no exigirlos de más (en todo momento uno está trabajando y los otros descansando); cada 6 horas cambia en servidor con el que se trabaja siguiendo un orden circular (1-2-3-4-1-2...). El servidor que está trabajando, toma un pedido (de acuerdo al orden de llegada de los mismos), lo resuelve y devuelve el resultado al cliente correspondiente. Nota: suponga que existe una función Resolver(texto) que utiliza cada Servidor para resolver el análisis de una secuencia de tipo texto y devuelve el resultado que es un entero.
+
+
+
+
+Procedure ej3 IS 
+
+
+TASK TYPE Cliente IS
+    ENTRY Resultado(res: IN integer);
+    ENTRY Identificacion(ident: IN integer);
+END Cliente;
+
+TASK TYPE Empresa IS
+    ENTRY Secuencias(id: IN integer, sec: IN Text);
+    ENTRY Siguiente(id_sig: OUT integer, sec_sig: OUT Text);
+    ENTRY CambioServer();
+END Empresa;
+
+TASK TYPE Servidor IS
+    ENTRY Identificacion(ident: IN integer);
+END Servidor;
+
+
+clientes = ARRAY(1..N) OF Cliente;
+servidores = ARRAY(1..4) OF Servidor;
+
+
+
+TASK BODY Cliente IS
+    sec: Text;
+    id, res: integer;
+    
+BEGIN
+    ACCEPT Identificacion(ident: IN integer) IS
+        id := ident;
+    END Identificacion;
+
+    LOOP
+        sec := SecuenciaADN();
+        Empresa.Secuencias(id, sec);
+
+        ACCEPT Resultado(res: IN integer);
+    END LOOP;
+END Cliente;
+
+
+TASK BODY Empresa IS
+    i: integer;
+    server_act: integer;
+BEGIN
+    FOR i := 1 TO 4 LOOP
+        servidores(i).Identificacion(i);
+    END LOOP;
+
+    server_act := 1;
+
+    LOOP
+        SELECT
+            WHEN(CambioServer'count = 0) => ACCEPT Secuencias(id: IN integer, sec: IN Text) IS
+                servidores(server_act).Siguiente(id, sec);
+            END Secuencias;
+        OR 
+            ACCEPT CambioServer() IS
+                server_act = (server_act + 1) mod 4 + 1;
+            END CambioServer;
+        END SELECT;
+    END LOOP;
+END Empresa;
+
+
+TASK BODY Servidor IS
+    id, id_cliente, res_act: integer;
+    sec_act: Text;
+BEGIN
+    ACCEPT Identificacion(ident: IN integer) IS
+        id := ident;
+    END Identificacion;
+
+    LOOP
+        ACCEPT Siguiente(id_sig: IN integer, sec_sig: IN Text) IS
+            id_cliente := id_sig;
+            sec_act := sec_sig;
+        END Siguiente;
+
+        res_act := Resolver(sec_act);
+        clientes(id_cliente).Resultado(rec_act);
+    END LOOP;
+END Servidor;
+
+
+BEGIN
+    i: integer;
+    FOR i := 1 TO N LOOP
+        clientes(i).Identificacion(i);
+    END LOOP;
+
+    Admin.CambioServer();
+    LOOP
+        DELAY(21600);
+        Admin.CambioServer();
+    END LOOP;
+END ej3;

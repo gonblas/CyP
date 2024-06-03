@@ -1,0 +1,169 @@
+1. Resolver con PASAJE DE MENSAJES ASINCRONICOS (PMA) el siguiente problema. Se debe simular la atención en un banco con 3 cajas para atender a N clientes que pueden ser especiales (son las embarazadas y los ancianos) o regulares. Cuando el cliente llega al banco se dirige a la caja con menos personas esperando y se queda ahí hasta que lo terminan de atender y le dan el comprobante de pago. Las cajas atienden a las personas que van a ella de acuerdo al orden de llegada pero dando prioridad a los clientes especiales; cuando terminan de atender a un cliente le debe entregar un comprobante de pago. Nota: maximizar la concurrencia.
+
+
+chan llegada(int), respuesta[N](int), cola_especial[3](int), cola_regular[3](int), finalizar[N](text);
+chan activar[3](), liberar(int);
+
+Process Clientes[id:0..N-1] {
+    bool especial = ...;
+    text comprobante;
+    int num_caja;
+
+    send llegada(id);
+    receive respuesta[id](num_caja);
+
+    if(especial) {
+        send cola_especial[num_caja](id);
+    }
+    else {
+        send cola_regular[num_caja](id);
+    }
+
+    send activar[num_caja]();
+    receive finalizar[id](compeobante);
+}
+
+
+Process Admin {
+    int esperando[3] = ([3] 0);
+    int id_actual, pos_min;
+
+    while(true) {
+        if(empty(liberar) and (not empty(llegada))) ->
+            receive llegada(id_actual);
+            pos_min := PosMinima(esperando);
+            esperando[pos_min]++;
+        □ (not empty(liberar)) ->
+            receive liberar(num_caja);
+            esperando[num_caja]--;
+        end if
+    }
+}
+
+
+Process Caja[id:0..2] {
+    int id_actual;
+    text comp_act;
+    while(true){
+        receive activar[id]();
+        if(not empty(cola_especial[id])){
+            receive cola_especial[id](id_actual);  
+        }
+        else {
+            receive cola_regular[id](id_actual);
+        }
+
+        comp_act = GenerarComprobante();
+        send finalizar[id_actual](comp_act);
+        send liberar(id);
+    }
+}
+
+
+
+2. Resolver con ADA el siguiente problema. Simular la venta de entradas a un evento musical por medio de un portal web. Hay N clientes que intentan comprar una entrada para el evento; los clientes pueden ser regulares o especiales (clientes que están asociados al sponsor del evento). Cada cliente especial hace un pedido al portal y espera hasta ser atendido; cada cliente regular hace un pedido y si no es atendido antes de los 5 minutos, vuelve a hacer el pedido siguiendo el mismo patrón (espera a lo sumo 5 minutos y si no lo vuelve a intentar) hasta ser atendido. Después de ser atendido, si consiguió comprar la entrada, debe imprimir el comprobante de la compra. 
+El portal tiene E entradas para vender y atiende los pedidos de acuerdo al orden de llegada pero dando prioridad a los Clientes Especiales. Cuando atiende un pedido, si aun quedan entradas disponibles le vende una al cliente que hizo el pedido y le entrega el comprobante. Nota: no debe modelarse la parte de la impresión del comprobante, solo llamar a una función Imprimir(comprobante) en el cliente que simulara esa parte; la cantidad E de entradas es mucho menor que la cantidad de clientes (E ≪ C); todas las tareas deben terminar.
+
+
+
+
+Procedure ej2 IS
+
+
+TASK TYPE Cliente IS
+    ENTRY Identificacion(especial: IN boolean);
+END Cliente;
+
+
+TASK Portal IS
+    ENTRY Cola_Especial(comprada: OUT boolean, comprobante: OUT Text);
+    ENTRY Cola_Regular(comprada: OUT boolean, comprobante: OUT Text);
+END Portal;
+
+
+TASK BODY Cliente IS
+    tengo_entrada, soy_especial, atendido: boolean;
+    comp: Text;
+BEGIN
+    ACCEPT Identificacion(especial: IN boolean) IS
+        soy_especial := especial;
+    END Identificacion;
+    atendido := false;
+    IF(soy_especial)THEN
+        Portal.Cola_Especial(tengo_entrada, comp);
+    ELSE 
+        WHILE(not atendido)LOOP
+            SELECT
+                Portal.Cola_Regular(tengo_entrada, comp);
+                atendido := true;
+            OR DELAY(300);
+                NULL;
+            END SELECT;
+        END LOOP;
+
+        IF(tengo_entrada)THEN
+            Imprimir(comp);
+    END IF;
+END Cliente;
+
+clientes = ARRAY(1..N) OF Cliente;
+
+
+TASK BODY Portal IS
+    entradas, atendidos: integer;
+
+BEGIN
+    entradas := E;
+    atendidos := 0;
+    WHILE(atendidos < N)LOOP
+        SELECT
+            ACCEPT Cola_Especial(comprada: OUT boolean, comprobante: OUT Text) IS
+                comprada := false;
+                IF(entradas > 0)THEN
+                    comprada := true;
+                    comprobante := GenerarComprobante();
+                    entradas--;
+                END IF
+                atendidos := atendidos + 1;
+            END Cola_Especial;
+        OR
+            WHEN(Cola_Especial'count = 0) =>
+            ACCEPT Cola_Regular(comprada: OUT boolean, comprobante: OUT Text) IS
+                comprada := false;
+                IF(entradas > 0)THEN
+                    comprada := true;
+                    comprobante := GenerarComprobante();
+                    entradas--;
+                END IF
+                atendidos := atendidos + 1;
+            END Cola_Regular;
+    END LOOP;
+END Portal;
+
+
+
+BEGIN
+    i: integer;
+    tipo_cliente: boolean;
+    FOR i:= 1 TO N LOOP
+        tipo_cliente := ...;
+        clientes(i).Identificacion(tipo_cliente);
+    END LOOP;
+END ej2;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
