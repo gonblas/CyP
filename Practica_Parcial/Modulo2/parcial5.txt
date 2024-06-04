@@ -1,0 +1,129 @@
+1. Resolver con PASASE DE MENSAJE ASINCRONICOS (PMA) el siguiente problema. En una oficina hay un empleado para atender a N personas. Las personas pueden tener prioridad ALTA o BAJA (cada uno conoce su prioridad). El empleado atiende a las personas de acuerdo a la prioridad (primero los de ALTA y luego los de BAJA). Cada persona espera hasta que el empleado lo termina de atender y se retira. Nota: existe la función atender() que simula que el empleado esta atendiendo a usa persona.
+
+
+chan cola_prior_baja(int), cola_prior_alta(int), respuesta[N](), aviso();
+
+Process Persona[id:0..N-1] {
+    bool prior_alta = ...;
+
+    if(prior_alta){
+        send cola_prior_alta(id);
+    }
+    else {
+        send cola_prior_baja(id);
+    }
+    send aviso();
+    receive respuesta[id]();
+}
+
+Process Empleado {
+    int id_act;
+    while(true){
+        receive aviso();
+        if(not empty(cola_prior_alta)){
+            receive cola_prior_alta(id_act);
+        }
+        else { -- Si no hay personas en la prioridad alta, debe haber en la baja
+            receive cola_prior_baja(id_act);
+        }
+        atender();
+        send respuesta[id_act]();
+    }
+}
+
+
+2. Resolver con PASAJE DE MENSAJES SINCRÓNICOS (PMS) el siguiente problema. Hay N personas que deben usar un teléfono publico de a una a la vez y de acuerdo al orden de llegada, pero dando prioridad a las que tienen que usarlo con urgencia (cada persona ya sabe al comenzar si es de tipo urgente o no). Nota: el teléfono NO ES un proceso, es un recurso compartido usado por las persones por medio de la función Usar_Teléfono().
+
+
+
+Process Persona[id:0..N-1] {
+    bool urgencia = ...;
+
+    if(urgencia) {
+        Admin!pedido_prior(id);
+    }
+    else {
+        Admin!pedido_reg(id);
+    }
+    Admin?espera();
+    Usar_Teléfono();
+    Admin!liberar();
+}
+
+-- Se puede simplificar mas si se usa una unica cola que maneje de por si la prioridad internamente. De esa manera la persona envia si es un urgente o no, y el Admin lo maneja a traves de la cola.
+
+Process Admin {
+    int id_act;
+    bool libre = true;
+    queue cola_regular, cola_prioridad;
+
+    do Persona[*]?pedido_prior(id_act) ->
+        push(cola_prioridad, id_act);
+    □  Persona[*]?pedido_reg(id_act) ->
+        push(cola_regular, id_act);
+    □  (libre and (not empty(cola_prioridad))) ->
+        pop(cola_prioridad, id_act);
+        Persona[id_act]!espera();
+    □  (libre and (empty(cola_prioridad)) and (not empty(cola_regular))) ->
+        pop(cola_regular, id_act);
+        Persona[id_act]!espera();
+    □  Persona[*]?libre(id_act) ->
+        libre = false;
+}
+
+
+
+3. Resolver con ADA el siguiente problema. En una guardia de hospital hay un médico, y acuden
+P Pacientes a ser atendidos. Cuando el paciente llega espera su turno, se dirige al consultorio
+del médico correspondiente, y cuando lo terminan de atender se retira. El médico atiende a
+los pacientes de acuerdo al orden de llegada, y cuando no hay nadie esperando duerme por 10
+minutos. Nota: suponga que existe una función AtenderPaciente( ) que simula el momento en
+que el médico esta atendiendo un paciente. Todas las tareas deben terminar.
+
+
+Procedure ej3 IS
+
+
+TASK TYPE Paciente;
+
+TASK Medico IS
+    ENTRY Cola_Espera();
+END Medico;
+
+pacientes=ARRAY(1..N) OF Paciente;
+
+
+TASK BODY Paciente IS
+
+BEGIN
+    Medico.Cola_Espera();
+END Paciente;
+
+
+
+TASK BODY Medico IS
+    atendidos: integer;
+BEGIN
+    atendidos := 0;
+    WHILE(atendidos < N)LOOP
+        SELECT
+            ACCEPT Cola_Espera() IS
+                AtenderPaciente();
+            END Cola_Espera;
+            atendidos := atendidos + 1;
+        OR DELAY(600)
+            NULL; 
+    END LOOP;
+END Medico;
+
+
+BEGIN
+    NULL;
+END ej3;
+
+
+
+
+
+
+

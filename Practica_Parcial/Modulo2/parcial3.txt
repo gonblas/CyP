@@ -1,0 +1,224 @@
+1. Resolver con PMA (Pasaje de Mensajes Asincrónico) la siguiente situación. En una ferretería hay 2 empleados que atienden a C clientes de acuerdo al orden de llegada. El cliente debe esperar a ser atendido para irse. Nota: maximizar la concurrencia.
+
+chan cola(int), respuesta[C]();
+
+Process Cliente[id:0..C-1] {
+    send cola(id);
+
+    receive respuesta();
+}
+
+
+Process Empleado[id:0..1] {
+    int id_act;
+    while(true) {
+        receive cola(id_act);
+        -- Lo atiende
+        send respuesta[id_act];
+    }
+}
+
+
+
+
+
+2. Resolver con PMS (Pasaje de Mensajes Sincrónico) la siguiente situación. Una oficina de
+correo recibe paquetes para dos destinos diferentes (Norte y Sur), existe un encargado que recibe
+los paquetes y los distribuye según el destino. Existen dos camiones (uno para cada destino)
+que llegan, cargan todos los paquetes que hay en el momento para el destino correspondiente y
+los llevan. Nota: maximizar la concurrencia.
+
+
+-- Como no especifica de donde los recibe supongo que se los envian clientes que no voy a modelar
+
+Process Encargado {
+    queue(Paquete) paquetes_norte, paquetes_sur; 
+    Paquete paquete;
+    Text destino;
+
+    do clientes[*]?Recibir_Paquete(paquete, destino) -> 
+        if(destino = "Norte"){
+            push(paquetes_norte, paquete);
+        }
+        else {
+            push(paquetes_sur, paquete);
+        }
+    □  Camion[0]?Llegada() -> -- Si llega el camion norte
+        while(not empty(paquetes_norte)){
+            Camion[0]!Nuevo_Paquete(pop(paquetes_norte), true);
+        }
+        Camion[0]!Nuevo_Paquete(null, false);
+     □  Camion[1]?Llegada() -> -- Si llega el camion norte
+        while(not empty(paquetes_sur)){
+            Camion[1]!Nuevo_Paquete(pop(paquetes_sur), true);
+        }
+        Camion[1]!Nuevo_Paquete(null, false);
+}
+
+-- Id=0: Camion Norte
+-- Id=1: Camion Sur
+Process Camion[id:0..1] {
+    queue(Paquete) paquetes;
+    Paquete paquete;
+    bool sigo;
+
+    while(true) {
+        sigo := true;
+        Encargado!Llegada();
+        Encargado?Nuevo_Paquete(paquete, sigo);
+        while(sigo){
+            push(paquetes, paquete);
+            Encargado?Nuevo_Paquete(paquete, sigo);
+        }
+        -- Lleva todos los paquetes almacenados en paquetes
+    }
+}
+
+
+
+
+
+3. Resolver con ADA la siguiente situación. Un servidor de impresión tiene dos impresoras
+(color y negra). Existen C clientes que mandan a imprimir al servidor UN documento cada
+uno (cada uno ya sabe si debe imprimir en color o blanco/negro) y esperan a que se termine de
+imprimir su documento. El servidor atiende los pedidos de acuerdo a las siguientes condiciones:
+Si el documento es en color, lo debe imprimir en la impresora color.
+Si el documento es en blanco y negro, lo debe imprimir en la impresora negra, o bien en la
+impresora color si no hubiese trabajos en color pendientes por ser impresos.
+Nota: no es necesario que las impresoras y el servidor terminen su ejecución.
+
+
+Procedure ej3 IS
+
+
+TASK TYPE Cliente IS
+    ENTRY Identificacion(ident: IN integer, color: IN boolean);
+    ENTRY Impresion(doc_impreso: IN Text);
+END Cliente;
+
+TASK Servidor IS
+    ENTRY Pedido_BN(id: IN integer, doc: IN Text);
+    ENTRY Pedido_Color(id: IN integer, doc: IN Text);
+    ENTRY Siguiente_BN(id_sig: OUT integer, doc_sig: OUT Text);
+    ENTRY Siguiente_Color(id_sig: OUT integer, doc_sig: OUT Text);
+END Servidor;
+
+TASK TYPE Impresora IS
+    ENTRY Identificacion(color: IN boolean);
+END Impresora;
+
+clientes = ARRAY(1..C) OF Cliente;
+impresoras = ARRAY(1..2) OF Impresora;
+
+
+TASK BODY Cliente IS
+    id: integer;
+    impresion_color: boolean;
+    doc, impreso: Text;
+BEGIN
+    ACCEPT Identificacion(ident: IN integer, color: IN boolean) IS
+        id := ident;
+        impresion_color := color;
+    END Identificacion;
+
+    doc := ...;
+
+    IF(not impresion_color)then
+        Servidor.Pedido_BN(id, doc);
+    ELSE 
+        Servidor.Pedido_Color(id, doc);
+    END IF;
+
+    ACCEPT Impresion(doc_impreso: IN Text) IS
+        impreso := doc_impreso;
+    END Impresion;
+END Cliente;
+
+
+
+TASK BODY Servidor IS
+
+BEGIN
+    LOOP
+        SELECT
+            WHEN(Siguiente_Color'count > 0) => 
+            ACCEPT Pedido_Color(id: IN integer, doc: IN Text) IS
+                ACCEPT Siguiente_Color(id_sig: OUT integer, doc_sig: OUT Text) IS
+                    id_sig := sig;
+                    doc_sig := doc;
+                END Siguiente_Color;
+            END Pedido_Color;
+        OR
+            WHEN(Siguiente_BN'count > 0) =>
+            ACCEPT Pedido_BN(id: IN integer, doc: IN Text) IS
+                ACCEPT Siguiente_BN(id_sig: OUT integer, doc_sig: OUT Text) IS
+                    id_sig := sig;
+                    doc_sig := doc;
+                END Siguiente_BN;
+            END Pedido_BN;
+        OR // Imprimo en la de color solo si no se puede en la de BN y no hay pedidos de color.
+            WHEN((Siguiente_BN'count = 0) and (Siguiente_Color'count > 0) and (Pedido_Color'count = 0)) =>
+            ACCEPT Pedido_BN(id: IN integer, doc: IN Text) IS
+                ACCEPT Siguiente_Color(id_sig: OUT integer, doc_sig: OUT Text) IS
+                    id_sig := sig;
+                    doc_sig := doc;
+                END Siguiente_Color;
+            END Pedido_BN;
+        END SELECT;
+    END LOOP;
+END Servidor;
+
+
+
+
+TASK BODY Impresora IS
+    tipo_color: boolean;
+    id_act: integer;
+    doc_act, doc_impreso: Text;
+BEGIN
+    ACCEPT Identificacion(color: IN boolean) IS
+        tipo_color := color;
+    END Identificacion;
+
+    IF(not tipo_color)THEN // Impresion en BN
+        LOOP
+            Servidor.Pedido_BN(id_act, doc_act);
+            doc_impreso := Imprimir(doc_act);
+            clientes(id_act).Impresion(doc_impreso);
+        END LOOP;
+    ELSE
+        LOOP
+            Servidor.Pedido_Color(id_act, doc_act);
+            doc_impreso := Imprimir(doc_act);
+            clientes(id_act).Impresion(doc_impreso);
+        END LOOP;
+    END IF;
+END Impresora;
+
+
+
+BEGIN
+    i: integer;
+    FOR i:= 1 TO C LOOP
+        clientes(i).Identificacion(i, random(true, false));
+    END LOOP;
+    impresoras(1).Identificacion(false);
+    impresoras(2).Identificacion(true);
+END ej3;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

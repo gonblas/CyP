@@ -1,0 +1,154 @@
+1. Resolver con PMA (Pasaje de Mensajes ASINCRÓNICOS) el siguiente problema. En un negocio hay 3 empleados que atienden de acuerdo al orden de llegada a N personas que van a pedir un presupuesto. Cuando el cliente sabe que empleado lo va a atender le entrega el listado de productos que necesita, y luego el empleado le entrega el presupuesto del mismo. Cuando un empleado está libre atiende a la primera persona que esté esperando para ser atendida. Nota: maximizar la concurrencia.
+
+-- Para maximizar la concurrencia yo haria que las personas envien el listado y que le devuelvan un presupuesto el empleado que agarre la lista del canal, pero como pide que debe mandar el listado luego de saber que empleado la atenderá el proceso se vuelve menos concurrente.
+
+chan llegada(int), mi_empleado[N](int), listas[3](queue(text)), presupuestos[N](float);
+
+
+Process Persona [id:0..N-1] {
+    int num_emp;
+    queue(text) lista = ...;
+    float mi_presupuesto;
+
+    send llegada(id);
+    receive mi_empleado[id](num_emp);
+    send listas[num_emp](lista);
+    receive presupuesto[id](mi_presupuesto);
+}
+
+
+Process Empleado[id:0..2] {
+    int id_act;
+    queue(text) lista_act;
+    float presupuesto_act;
+    while(true) {
+        receive llegada(id_act);
+        send mi_empleado[id_act](id);
+        receive listas[id](lista_act);
+        presupuesto_act = HacerPresupuesto(lista_act);
+        send presupuestos[id_act](presupuesto_act);
+    }
+}
+
+
+
+
+2. Resolver con PMS (Pasaje de Mensajes SINCRÓNICOS) el siguiente problema. En un
+examen hay un docente que toma el final a 20 alumnos (de a uno a la vez). El docente llama a
+los alumnos en orden según su ID, le toma el examen y al terminar le indica su nota.
+
+
+
+Process Alumno[id:0..19] {
+    float mi_nota;
+    text examen;
+    Docente?llamado();
+    -- Hace el final
+    Docente!termine(examen);
+    Docente?nota(mi_nota);
+}
+
+
+Process Docente {
+    int id;
+    float nota_act;
+    text examen_act;
+    for id = 0..19 {
+        Alumno[id]!llamado();
+        -- Espera a que haga el final
+        Alumno[id]?termine(examen_act);
+        nota_act = Evaluar(examen_act);
+        Alumno[id]!nota(nota_act);
+    }
+}
+
+
+
+
+
+3. Resolver con ADA el siguiente problema. En un cumpleaños de 7 años contratan a un especialista para que se encargue del entretenimiento. El especialista hace una competencia entre los N chicos donde le entrega a cada uno una lista de 10 elementos a buscar (diferentes elementos en cada lista). Cada chico busca los elementos que le tocaron en la lista, y al terminar le entrega todo al especialista para que le dé un puntaje (suponga que existe una función DarPuntaje llamada por el especialista para hacer este cálculo). Cuando todos han terminado el especialista le indica a todos los chicos el id de quien gano (obtuvo más puntaje). Nota: maximizar la concurrencia.
+
+
+
+Procedure ej3 IS
+
+
+TASK TYPE Chico IS
+    ENTRY Identificacion(ident: IN integer);
+END Chico;
+
+chicos = ARRAY(1..N) OF Chico;
+
+
+TASK Especialista IS
+    ENTRY Entrega(lista: OUT List(text));
+    ENTRY Dar_Puntaje(id: IN integer, lista: IN List(Object), puntaje: OUT integer);
+    ENTRY Ganador(id_ganador: IN integer); 
+END Especialista;
+
+
+TASK BODY Chico IS
+    id, id_ganador, mi_puntaje: integer;
+    lista: List(text);
+    objetos: List(Object);
+BEGIN
+    ACCEPT Identificacion(ident: IN integer) IS
+        id := ident;
+    END Identificacion;
+
+    Especialista.Entrega(lista);
+    # Busca los elementos de la lista y los pone en objetos
+    Especialista.Dar_Puntaje(id, objetos, mi_puntaje);
+    Especialista.Ganador(id_ganador);
+END Chico;
+
+
+
+TASK BODY Especialista IS
+    id_ganador, max_puntaje, terminaron, i: integer;
+BEGIN
+    terminaron := 0; max_puntaje := -1; id_ganador := -1;
+    FOR i:= 1 to 3*N LOOP
+        SELECT
+            ACCEPT Entrega(lista: OUT List(text)) IS
+                lista := DarLista();
+            END Entrega;
+        OR 
+            ACCEPT Dar_Puntaje(id: IN integer, lista: IN List(Object), puntaje: OUT integer) IS
+                terminaron := terminaron + 1;
+                puntaje := DarPuntaje(lista);
+                IF(puntaje > max_puntaje)THEN
+                    max_puntaje := puntaje;
+                    id_ganador := id;
+                END IF;
+            END Dar_Puntaje;
+        OR 
+            WHEN(terminaron = N) =>
+            ACCEPT Ganador(ganador: IN integer) IS
+                ganador := id_ganador;
+            END Ganador;
+        END SELECT;
+    END LOOP;
+END Especialista;
+
+
+BEGIN
+    i: integer;
+    FOR i:=1 TO N LOOP
+        chicos(i).Identificacion(i);
+    END LOOP;
+END ej3;
+
+
+
+
+
+
+
+
+
+
+
+
+
+

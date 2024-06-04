@@ -1,0 +1,146 @@
+1. Resolver con PMA (Pasaje de Mensajes Asincrónicos) el uso de un servidor en una oficina con N máquinas de escritorio que le hacen solicitudes. Cada máquina cuando hace una solicitud se queda esperando su respuesta, esto lo repite indefinidamente. El servidor atiende los pedidos de acuerdo al orden de prioridad de las solicitudes (la prioridad está dada por el ID del proceso que representa a la máquina que hace la solicitud), y cada vez que el servidor está libre (no hay solicitudes para atender) ejecuta una limpieza para optimizar su funcionamiento. Nota: cuando el servidor está ejecutando la limpieza no debe atender ninguna solicitud hasta
+que hayan terminado de hacerla.
+
+chan pedido(int), respuesta[N](), siguiente(), siguiente_id(int), aviso();
+
+Process Maquina[id:0..N-1] {
+    while(true) {
+        send aviso();
+        send pedido(id);
+        receive respuesta[id]();
+    }
+}
+
+
+
+Process Admin {
+    int id_act;
+    cola_especial cola; --Ordenada por id
+    receive aviso();
+    if(not empty(pedido)) ->
+        receive pedido(id_act);
+        push(cola, id_act);
+    □ (not empty(siguiente)) ->
+        receive siguiente();
+        if(empty(cola)) {
+            id_act = -1;
+        }
+        else {
+            pop(cola, id_act);
+        }
+        send siguiente_id(id_act);
+}
+
+
+
+Process Servidor {
+    while(true) {
+        send siguiente();
+        receive siguiente_id(id_act);
+
+        if(id_act = -1) {
+            delay(rand(1,600)); -- Ejecuta una limpieza para optimizar su funcionamiento
+        }
+        else{
+            send respuesta[id_act]();
+        }
+    }
+}
+
+
+
+2. Resolver con PMS (Pasaje de Mensajes Sincrónicos) un antivirus distribuido. En él hay R procesos robots que continuamente están buscando posibles sitios web infectados; cada vez que encuentran uno avisan la dirección y continúan buscando. Hay un proceso analizador que se encargue de hacer todas las pruebas necesarias con cada uno de los sitios encontrados por los robots para determinar si están o no infectados. Nota: maximizar la concurrencia.
+
+
+Process Robot[id:0..R-1] {
+    text direccion;
+    while(true) {
+        direccion = ...;
+        Admin!direcciones(direccion);
+    }
+}
+
+
+Process Admin {
+    queue(text) cola;
+    text direccion;
+    do Robot[*]?direcciones(direccion) -> 
+        push(cola, direccion);
+    □  (not empty(cola)); Analizador?pedido() -> 
+        pop(cola, direccion); 
+        Analizador!siguiente_dir(direccion);
+}
+
+
+Process Analizador {
+    while(true) {
+        Admin!pedido();
+        Admin?siguiente_dire(dir_act);
+        -- Analiza el sitio web
+    }
+}
+
+
+
+3. Resolver con ADA el siguiente problema. En una empresa hay 5 controladores de temperatura y una Central. Cada controlador toma la temperatura del ambiente cada 10 minutos y se la envía a una central para que analice el dato y le indique que hacer. Cuando la central recibe una temperatura que es mayor de 40 grados, detiene a ese controlador durante 1 hora. Nota: maximizar la concurrencia.
+
+
+Procedure ej3 IS
+
+
+TASK TYPE Controlador;
+
+
+TASK Central IS
+    ENTRY Temperaturas(medicion: IN float, dormir: OUT boolean);
+END Central;
+
+controladores = ARRAY(1..5) OF Controlador;
+
+
+TASK BODY Controlador IS
+    medicion: float;
+    dormir: boolean;
+BEGIN
+    while(true) {
+        medicion := HacerMedicion();
+        Central.Temperaturas(medicion, dormir);
+        IF(dormir)THEN {
+            DELAY(3600);
+        }
+        ELSE {
+            DELAY(600);
+        }
+        END IF;
+    }
+END Controlador;
+
+
+TASK BODY Central IS
+BEGIN
+    LOOP
+        ACCEPT Temperaturas(medicion: IN float, dormir: OUT boolean) IS
+            IF(medicion > 40)THEN
+                dormir := true;
+            ELSE
+                dormi := false;
+            END IF;
+        END Temperaturas;
+    END LOOP;
+END Central;
+
+
+BEGIN 
+    NULL;
+END ej3;
+
+
+
+
+
+
+
+
+
+
+
