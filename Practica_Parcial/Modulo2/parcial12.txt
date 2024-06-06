@@ -1,0 +1,108 @@
+1. Resolver con PMS. En la estación de trenes hay una terminal de SUBE que debe ser usada por P personas de
+acuerdo con el orden de llegada. Cuando la persona accede a la terminal, la usa y luego se retira para dejar al
+siguiente. Nota: cada Persona usa sólo una vez la terminal.
+
+
+Process Persona[id:0..P-1] {
+    Admin!pedido(id);
+    Admin?pasar();
+    -- Usar la terminal SUBE
+    Admin!liberar();
+}
+
+
+
+Process Admin {
+    bool libre = true;
+    queue(int) cola;
+    int id_act;
+
+    do (libre); Persona[*]?pedido(id_act) ->
+        Persona[id_act]!pasar();
+        libre = false;
+    []  (not libre); Persona[*]?pedido(id_act)
+        push(cola, id_act);
+    [] Persona[*]?liberar() ->
+        if(not empty(cola)){
+            pop(cola, id_act);
+            Persona[id_act]!pasar();
+        }
+        else {
+            libre = false;
+        }
+    end do;
+}
+
+
+
+
+
+2. En un negocio de cobros digitales hay P personas que deben pasar por la única caja de cobros para realizar el pago de sus boletas. Las personas son atendidas de acuerdo con el orden de llegada, teniendo prioridad aquellos que deben pagar menos de 5 boletas de los que pagan más. Adicionalmente, las personas embarazadas y los ancianos tienen prioridad sobre los dos casos anteriores. Las personas entregan sus boletas al cajero y el dinero de pago; el cajero les devuelve el vuelto y los recibos de pago. Implemente un programa que permita resolver el problema anterior usando ADA.
+
+
+Procedure ej2 IS
+
+TASK TYPE Persona IS
+    ENTRY Mi_Prioridad(prior: IN integer);
+END Persona;
+
+TASK Caja IS
+    ENTRY Pedido_Regular(boletas: IN String, dinero: IN float, vuelto: OUT float; recibos: OUT String);
+    ENTRY Pedido_Prioridad_Boletas(boletas: IN String, dinero: IN float, vuelto: OUT float; recibos: OUT String);
+    ENTRY Pedido_Prioridad_Mayor(boletas: IN String, dinero: IN float, vuelto: OUT float; recibos: OUT String);
+END CAJA;
+
+personas = ARRAY(1..P) OF Persona;
+
+TASK BODY Persona IS
+    boletas, recibos: String;
+    dinero, vuelto: float;
+    prioridad: integer;
+BEGIN
+    ACCEPT Mi_Prioridad(prior: IN integer) DO
+        prioridad := prior;
+    END Mi_Prioridad;
+
+    IF(prioridad = 0)THEN // Prioridad baja (Regular)
+        Caja.Pedido_Regular(boletas, dinero, vuelto, recibos);
+    ELSE IF(prioridad = 1)THEN // Prioridad media (Boletas)
+        Caja.Pedido_Prioridad_Boletas(boletas, dinero, vuelto, recibos);
+    ELSE // Prioridad alta (ancianos y embarazadas)
+        Caja.Pedido_Prioridad_Mayor(boletas, dinero, vuelto, recibos);
+    END IF;
+END Persona;
+
+
+TASK BODY Caja IS
+    i: integer;
+BEGIN
+    FOR i IN 1..P LOOP
+        SELECT
+        WHEN((Pedido_Prioridad_Boletas'count = 0) and (Pedido_Prioridad_Mayor'count = 0)) =>
+            ACCEPT Pedido_Regular(boletas: IN String, dinero: IN float, vuelto: OUT float; recibos: OUT String) DO
+                vuelto := dinero - PagoEnBoletas(boletas);
+                recibos := HacerRecibos(boletas);
+            END Pedido_Regular;
+        OR WHEN(Pedido_Prioridad_Mayor'count = 0) =>
+            ACCEPT Pedido_Prioridad_Boletas(boletas: IN String, dinero: IN float, vuelto: OUT float; recibos: OUT String) DO
+                vuelto := dinero - PagoEnBoletas(boletas);
+                recibos := HacerRecibos(boletas);
+            END Pedido_Prioridad_Boletas;
+        OR
+            ACCEPT Pedido_Prioridad_Mayor(boletas: IN String, dinero: IN float, vuelto: OUT float; recibos: OUT String) DO
+                vuelto := dinero - PagoEnBoletas(boletas);
+                recibos := HacerRecibos(boletas);
+            END Pedido_Prioridad_Mayor;
+    END LOOP;
+END Caja;
+
+BEGIN
+    i: integer;
+    FOR i IN 1..P LOOP
+        personas(i).Mi_Prioridad(rand(0,1,2));
+    END LOOP;
+END ej2;
+
+
+
+

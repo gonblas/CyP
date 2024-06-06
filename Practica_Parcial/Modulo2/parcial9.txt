@@ -1,0 +1,53 @@
+MEMORIA DISTRIBUIDA - Resolver con: 1) PMA; 2) PMS; 3) ADA el siguiente problema. Simular el funcionamiento de un Entrenamiento de Básquet donde hay 20 jugadores y UN entrenador. El entrenador debe distribuir a los jugadores en 2 canchas. Cuando un
+jugador llega el entrenador le indica la cancha a la cual debe ir para que se dirija a ella y espere hasta que lleguen los 10; en ese momento comienzan a jugar el partido que dura 40 minutos. Cuando ambos partidos han terminado, el entrenador les da a los 20 jugadores una charla de 10 minutos y luego todos se retiran. El entrenador asigna el número de cancha en forma cíclica 1,
+2, 1, 2 y así sucesivamente. Nota: todos los procesos deben terminar.
+
+-- Lo resuelvo solo con PMA
+
+chan llegada(int), respuesta[20](int), partido_inicio[2](), partido_fin[2](), termine(), retiro(), aviso();
+
+Process Jugador[id:0..19] {
+    int num_cancha;
+    send llegada(int);
+    receive respuesta[id](num_cancha);
+    send partido_inicio[num_cancha](); -- Avisa que ya sabe su numero de cancha y espera a que lleguen
+    receive partido_inicio[num_cancha]();
+    send termine();
+    receive retiro();
+}
+
+-- Para que todos jueguen el partido a la vez
+
+Process Partido[num_cancha: 1..2] {
+    int i;
+    for i:= 1..10 {
+        receive partido_inicio[num_cancha]();
+    }
+    delay(2400); -- Se juega el partido
+    for i:= 1..10 {
+        send partido_fin[num_cancha]();
+    }
+}
+
+
+Process Entrenador {
+    int terminaron = 0, id_act, i;
+    int cancha_actual = 1;
+
+    for i:= 1..20 {
+        receive llegada(id_act);
+        respuesta[id_act] = cancha_actual;
+        cancha_actual = (cancha_actual mod 2) + 1;
+    }
+
+    for i:= 1..20 {
+        receive termine();
+    }
+    delay(600);
+    for i:= 1..20 {
+        send retiro();
+    }
+}
+
+
+

@@ -1,0 +1,98 @@
+1. Resolver con PASAJE DE MENSAJES ASINCRÓNICO (PMA) el siguiente problema. En un negocio de cobros digitales hay P personas que deben pasar por la única caja de cobros para realizar el pago de sus boletas. Las personas son atendidas de acuerdo con el orden de llegada, teniendo prioridad aquellos que deben pagar menos de 5 boletas de los que pagan más. Adicionalmente, las personas embarazadas tienen prioridad sobre los dos casos anteriores. Las personas entregan sus boletas al cajero y el dinero de pago; el cajero les devuelve el vuelto y los recibos de pago.
+
+
+chan cola_regular(int, string, float), cola_boletas5(int, string, float), cola_especial(int, string, float);
+chan respuesta[P](float, string), aviso();
+
+Process Persona[id:0..P-1] {
+    int prior = ...;
+    string boletas = ..., recibos;
+    float dinero = ..., vuelto;
+
+    if(prior = 0) {
+        send cola_regular(id, boletas, dinero);
+    }
+    else if(prior = 1){
+        send cola_boletas5(id, boletas, dinero);
+    }
+    else {
+        send cola_especial(id, boletas, dinero);
+    }
+    send aviso();
+    recieve respuesta[id](vuelto, recibos);
+}
+
+
+Process Caja {
+    int i, id_act;
+    string boletas_act, recibos_act;
+    float dinero_act, vuelto_act;
+
+    for i:= 1..P {
+        receive aviso();
+
+        if(not empty(cola_especial)){
+            receive cola_especial(id_act, boletas_act, dinero_act);
+        }
+        else if(not empty(cola_boletas5)) {
+            receive cola_boletas5(id_act, boletas_act, dinero_act);
+        }
+        else {
+            receive cola_regular(id_act, boletas_act, dinero_act);
+        }
+        (recibos_act, vuelto_act) = Cobrar(boletas_act, dinero_act);
+        send respuesta[id_act](vuelto_act, recibos_act);
+    }
+}
+
+
+2. Resolver con ADA el siguiente problema. La oficina central de una empresa de venta de indumentaria debe calcular cuántas veces fue vendido cada uno de los artículos de su catálogo. La empresa se compone de 100 sucursales y cada una de ellas maneja su propia base de datos de ventas. La oficina central cuenta con una herramienta que funciona de la siguiente manera: ante la consulta realizada para un artículo determinado, la herramienta envía el identificador del artículo a cada una de las sucursales, para que cada uno de éstas calcule cuántas veces fue vendido en ella. Al final del procesamiento, la herramienta debe conocer cuántas veces fue vendido en total, considerando todas las sucursales. Cuando ha terminado de procesar un artículo comienza con el siguiente (suponga que la herramienta tiene una función generarArtículo que retorna el siguiente ID a consultar). Nota: maximizar la concurrencia. Supongo que existe una función ObtenerVentas(ID) que retorna la cantidad de veces que fue vendido el artículo con identificador ID en la base de datos de la sucursal que la llama.
+
+
+Procedure ej2 IS
+
+TASK TYPE Sucursal;
+
+TASK Central IS
+    ENTRY Pedir_ID(id_art: OUT integer);
+    ENTRY Informar(cantidad: IN integer);
+END Central;
+
+sucursales = ARRAY(1..100) OF Sucursal;
+
+
+TASK BODY Sucursal IS
+    id_act, cantidad: integer;
+BEGIN
+    LOOP
+        Central.Pedir_ID(id_act);
+        cantidad := ObtenerVentas(id_act);
+        Central.Informar(cantidad);
+    END LOOP;
+END Sucursal;
+
+
+TASK BODY Central IS
+    id_act, tot ,i: integer;
+BEGIN
+    LOOP
+        id_act := generarArtículo();
+        tot := 0;
+        FOR i IN 1..100 LOOP
+            ACCEPT Pedir_ID(id_art: OUT integer) DO
+                id_art := id_act;
+            END Pedir_ID;
+        END LOOP;
+        FOR i IN 1..100 LOOP
+            ACCEPT Informar(cantidad: IN integer) DO
+                tot := tot + cantidad;
+            END Pedir_ID;
+        END LOOP;
+        # Puede informarse el total 
+    END LOOP;
+END Central;
+
+BEGIN
+    NULL;
+END ej2;
+    

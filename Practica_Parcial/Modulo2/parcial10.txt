@@ -1,0 +1,116 @@
+1. Resolver con PMA el siguiente problema. Se debe modelar el funcionamiento de una casa de venta de repuestos
+automotores, en la que trabajan V vendedores y que debe atender a C clientes. El modelado debe considerar que:
+(a) cada cliente realiza un pedido y luego espera a que se lo entreguen; y (b) los pedidos que hacen los clientes son tomados por cualquiera de los vendedores. Cuando no hay pedidos para atender, los vendedores aprovechan para controlar el stock de los repuestos (tardan entre 2 y 4 minutos para hacer esto). Nota: maximizar la concurrencia.
+
+type entrega;
+chan pedidos(int, string), respuestas[C](entrega), siguiente(int), siguiente_cliente(int, string);
+
+
+Process Cliente[id:0..C-1] {
+    string pedido;
+    entrega e;
+    send pedidos(id, pedido);
+    receive respuestas[id](e);
+}
+
+
+Process Admin {
+    string pedido;
+    entrega e;
+    int id_actual, id_vendedor;
+    while(true) {
+        receive siguiente(id_vendedor);
+        if(not empty(pedidos)){
+            receive pedidos(id_actual, pedido);
+        }
+        else {
+            id_actual = -1;
+        }
+        send siguiente_cliente(id_actual, pedido);
+    }
+}
+
+
+Process Vendedor[id:0..V-1] {
+    string p;
+    entrega e;
+    int id_actual;
+    while(true) {
+        send siguiente(id);
+        receive siguiente_cliente(id_actual, p);
+        if(id_actual = -1) {
+            delay(rand(120, 240));
+        }
+        else {
+            e = ResolverPedido(pedido);
+            send respuestas[id_actual](e);
+        }
+    }
+}
+
+
+
+2. Resolver con ADA el siguiente problema. Se quiere modelar el funcionamiento de un banco, al cual llegan
+clientes que deben realizar un pago y llevarse su comprobante. Los clientes se dividen entre los regulares y los premium, habiendo R clientes regulares y P clientes premium. Existe un único empleado en el banco, el cual
+atiende de acuerdo al orden de llegada, pero dando prioridad a los premium sobre los regulares. Si a los 30
+minutos de llegar un cliente regular no fue atendido, entonces se retira sin realizar el pago. Los clientes premium siempre esperan hasta ser atendidos.
+
+
+
+Procedure ej2 IS
+
+TASK TYPE Cliente_Regular;
+
+TASK TYPE Cliente_Premium;
+
+TASK Empleado IS
+    ENTRY Pedido_Regular(pago: IN float, comprobante: OUT Text);
+    ENTRY Pedido_Premium(pago: IN float, comprobante: OUT Text);
+END Empleado;
+
+regulares = ARRAY(1..R) OF Cliente_Regular;
+premiums = ARRAY(1..P) OF Cliente_Premium;
+
+
+TASK BODY Cliente_Regular IS
+    pago: float;
+    comprobante: Text;
+BEGIN
+    pago := ...;
+    SELECT
+        Empleado.Pedido_Regular(pago, comprobante);
+    OR DELAY(1800)
+        NULL;
+    END SELECT;
+END Cliente_Regular;
+
+
+TASK BODY Cliente_Premium IS
+    pago: float;
+    comprobante: Text;
+BEGIN
+    pago := ...;
+    Empleado.Pedido_Premium(pago, comprobante);
+END Cliente_Premium;
+
+TASK BODY Empleado IS
+
+BEGIN
+    LOOP
+        SELECT
+            WHEN(Pedido_Premium'count = 0) =>
+            ACCEPT Pedido_Regular(pago: IN float, comprobante: OUT Text) IS
+                comprobante := RealizarComprobante(pago);
+            END Pedido_Regular;
+        OR
+            ACCEPT Pedido_Premium(pago: IN float, comprobante: OUT Text) IS
+                comprobante := RealizarComprobante(pago);
+            END Pedido_Premium;
+        END SELECT;
+    END LOOP;
+END Empleado;
+
+
+BEGIN
+    NULL;
+END ej2;

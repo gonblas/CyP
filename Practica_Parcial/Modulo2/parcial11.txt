@@ -1,0 +1,146 @@
+1. Resolver con Pasaje de Mensajes Sincrónicos (PMS) el siguiente problema. En un torneo de programación
+hay 1 organizador, N competidores y S supervisores. El organizador comunica el desafío a resolver a cada
+competidor. Cuando un competidor cuenta con el desafío a resolver, lo hace y lo entrega para ser evaluado.
+A continuación, espera a que alguno de los supervisores lo corrija y le indique si está bien. En caso de tener
+errores, el competidor debe corregirlo y volver a entregar, repitiendo la misma metodología hasta que llegue
+a la solución esperada. Los supervisores corrigen las entregas respetando el orden en que los competidores
+van entregando. Nota: maximizar la concurrencia y no generar demora innecesaria.
+
+
+Process Organizador {
+
+    int i, id_act;
+    string desafio = ...;
+    for i:= 1..N 
+        Competidor[*]?pedido(id_act);
+        Competidor[id_act]!entrega(desafio);
+
+
+}
+
+
+Process Competidor[id:0..N-1] {
+    string desafio, resolucion, errores;
+    Organizador!pedido(id);
+    Organizador?entrega(desafio);
+
+    resolucion = ...;
+
+    bool sigo = true;
+    Admin!entregas(id,resolucion);
+    Supervisor[*]?respuesta(errores);
+    if(errores = NULL){sigo = false}
+    while(sigo) {
+        resolucion = ...;
+        Admin!entregas(id,resolucion);
+        Supervisor[*]?respuesta(errores);
+        if(errores = NULL){sigo = false}
+    }
+}
+
+Process Admin {
+    queue(int, string) cola;
+    int id_act, id_sup;
+    string resol_act;
+    while(true){
+        if Competidor[*]?entregas(id_act, resol_act) ->
+            push(cola, (id_act, resol_act));
+        □  (not empty(cola)); Supervisor[*]?siguiente(id_sup) ->
+            pop(cola, (id_act, resol_act));
+            Supervisor[id_sup]!siguiente_entrega(id_act, resol_act);
+        end if;
+    }
+}
+
+
+Process Supervisor[id:0..S-1] {
+    int id_act;
+    string resol_act, errores;
+    while(true) {
+        Admin!siguiente(id);
+        Admin?siguiente_entrega(id_act, resol_act);
+        errores = Corregir(resol_act); -- errores = NULL si no tiene errores
+        Competidor[id_act]!respuesta(errores);
+    }
+}
+
+
+
+
+2. Resolver con ADA el siguiente problema. Una empresa de venta de calzado cuenta con S sedes. En la oficina
+central de la empresa se utiliza un sistema que permite controlar el stock de los diferentes modelos, ya que
+cada sede tiene una base de datos propia. El sistema de control de stock funciona de la siguiente manera:
+dado un modelo determinado, lo envía a las sedes para que cada una le devuelva la cantidad disponible en
+ellas; al final del procesamiento, el sistema informa el total de calzados disponibles de dicho modelo. Una
+vez que se completó el procesamiento de un modelo, se procede a realizar lo mismo con el siguiente modelo.
+Nota: suponga que existe una función DevolverStock(modelo,cantidad) que utiliza cada sede donde recibe
+como parámetro de entrada el modelo de calzado y retorna como parámetro de salida la cantidad de pares
+disponibles. Maximizar la concurrencia y no generar demora innecesaria.
+
+
+
+Procedure ej2 IS 
+
+
+TASK TYPE Sede;
+
+TASK Central IS
+    ENTRY Reporte(modelo: OUT string);
+    ENTRY Listo(cantidad: IN int);
+END Central;
+
+sedes = ARRAY(1..S) OF Sede;
+
+
+TASK BODY Sede IS
+    modelo: string;
+    cantidad: integer;
+BEGIN
+    LOOP
+        Central.Reporte(modelo);
+        DevolverStock(modelo,cantidad)
+        Central.Listo(cantidad);
+    END LOOP;
+END Sede;
+
+-- Se podria aprovechar la comunicacion bidireccional de ADA pero como la busqueda del stock para distintas sedes puede ser muy grande se haria menos concurrente el programa.
+
+-- En la resolucion lo hacen distinto, pero en mi solucion pueden ir entre
+
+TASK BODY Central IS
+    modelo_act: string;
+    tot, i: integer;
+BEGIN
+    LOOP
+        CargarNuevoModelo(modelo_act);
+        tot := 0;
+        FOR i IN 1..S LOOP
+            ACCEPT Reporte(modelo: OUT string) IS
+                modelo := modelo_act;
+            END Reporte;
+        END LOOP;
+        FOR i IN 1..S LOOP
+            ACCEPT Listo(cantidad: IN int) IS
+                tot := tot + cantidad;
+            END Listo;
+        END LOOP;
+        CargarNuevoStock(modelo_act, tot);
+    END LOOP;
+END Central;
+
+
+BEGIN
+    NULL;
+END ej2;
+
+
+
+
+
+
+
+
+
+
+
+

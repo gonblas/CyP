@@ -36,6 +36,7 @@ Process Admin {
 Process Servidor {
     while(true) {
         send siguiente();
+        send aviso();
         receive siguiente_id(id_act);
 
         if(id_act = -1) {
