@@ -80,10 +80,7 @@ int main(int argc, char* argv[]){
   }
 
   print_matrix(m1); print_matrix(m2); print_matrix(result); 
-
   free(m1); free(m2); free(result);
-  printf("\nPresiona ENTER para salir...\n");
-  getchar();
 
   return 0;
 }
