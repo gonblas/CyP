@@ -4,7 +4,7 @@
 
 int main(int argc, char* argv[]){
   if(argc == 1) {
-    printf("La cantidad de parámetros es incorrecta. Por favor ingrese \n");
+    printf("La cantidad de parámetros es incorrecta.\nUso: %s <N>\n", argv[0]);
     return 1;
   }
 
@@ -38,6 +38,8 @@ int main(int argc, char* argv[]){
         printf("result[%d,%d] = %d\n", i, j, result[i,j]);
     }
   }
+
+  free(m1); free(m2); free(result);
 
   return 0;
 }
